@@ -25,3 +25,8 @@ dist-ssr
 data.json
 
 .env
+
+# Build files
+main.js
+main.css
+styles.css
