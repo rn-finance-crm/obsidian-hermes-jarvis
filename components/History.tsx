@@ -174,7 +174,7 @@ const History: React.FC<HistoryProps> = ({ isActive, onRestoreConversation }) =>
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(async () => {
+  useEffect(() => {
     const loadHistory = async () => {
       try {
         setIsLoading(true);
@@ -188,7 +188,7 @@ const History: React.FC<HistoryProps> = ({ isActive, onRestoreConversation }) =>
     };
 
     if (isActive) {
-      await loadHistory();
+      loadHistory();
     }
   }, [isActive]);
 

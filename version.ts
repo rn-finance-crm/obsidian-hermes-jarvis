@@ -1,3 +1,3 @@
 export const PLUGIN_VERSION = "1.4.8";
-export const GIT_BRANCH = "agent/settings-version-info";
-export const GIT_COMMIT = "eb967d1";
+export const GIT_BRANCH = "mobile-lock-end-solution";
+export const GIT_COMMIT = "edb203a";

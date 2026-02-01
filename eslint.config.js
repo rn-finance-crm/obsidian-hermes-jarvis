@@ -60,6 +60,6 @@ export default [
     },
   },
   {
-    ignores: ["main.js", "styles.css", "*.d.ts", "node_modules/**", "dist/**", "tailwind.config.js", "postcss.config.js"],
+    ignores: ["main.js", "main.css", "styles.css", "*.d.ts", "node_modules/**", "dist/**", "tailwind.config.js", "postcss.config.js"],
   },
 ];
