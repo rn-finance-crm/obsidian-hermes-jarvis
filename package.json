@@ -20,6 +20,7 @@
     "lint:check": "./lint-and-fix.sh",
     "release": "./release.sh",
     "deploy": "./deploy.sh",
+    "deploy:mobile": "./deploy.sh mobile",
     "generate-version": "node scripts/generate-version.mjs"
   },
   "dependencies": {

@@ -12,20 +12,25 @@ target=""
 
 if [ "$mode" = "prod" ]; then
   target="${TARGET_PROD:-}"
+elif [ "$mode" = "mobile" ]; then
+  target="${TARGET_MOBILE:-/run/user/1000/gvfs/mtp:host=Google_Pixel_8a_49121JEKB13191/Internal shared storage/Syncthing/org}"
 elif [ "$mode" = "dev" ] || [ -z "$mode" ]; then
   target="${TARGET_DEV:-}"
 else
-  echo "Usage: ./deploy.sh [dev|prod]"
+  echo "Usage: ./deploy.sh [dev|prod|mobile]"
   exit 1
 fi
 
 if [ -z "$target" ]; then
   if [ "$mode" = "prod" ]; then
     echo "Deploy: TARGET_PROD not set, skipping."
+  elif [ "$mode" = "mobile" ]; then
+    echo "Deploy: TARGET_MOBILE not set, using default MTP path."
+    target="/run/user/1000/gvfs/mtp:host=Google_Pixel_8a_49121JEKB13191/Internal shared storage/Syncthing/org"
   else
     echo "Deploy: TARGET_DEV not set, skipping."
+    exit 0
   fi
-  exit 0
 fi
 
 plugin_dir="$target/.obsidian/plugins/plugin-hermes"
