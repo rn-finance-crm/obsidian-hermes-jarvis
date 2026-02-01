@@ -427,8 +427,33 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible';
+      
+      // Only log if voice session is active
       if (assistantRef.current) {
-        assistantRef.current.handleVisibilityChange(document.visibilityState === 'visible');
+        if (!isVisible) {
+          // Screen locked or app backgrounded
+          setTranscripts(prev => [...prev, {
+            id: `visibility-${Date.now()}`,
+            role: 'system',
+            text: '📱 Screen locked or app backgrounded - connection may drop',
+            isComplete: true,
+            timestamp: Date.now(),
+            topicId: currentTopicIdRef.current
+          }]);
+        } else {
+          // Screen unlocked or app foregrounded
+          setTranscripts(prev => [...prev, {
+            id: `visibility-${Date.now()}`,
+            role: 'system',
+            text: '📱 Screen unlocked - checking connection...',
+            isComplete: true,
+            timestamp: Date.now(),
+            topicId: currentTopicIdRef.current
+          }]);
+        }
+        
+        assistantRef.current.handleVisibilityChange(isVisible);
       }
     };
 
