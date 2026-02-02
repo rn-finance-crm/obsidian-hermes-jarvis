@@ -1,9 +1,9 @@
-The project_name: _FILL_ME_IN_
+The project_name: memory-tool-impl
 
 1. Create a DEV folder:
 Check out https://github.com/symunona/obsidian-hermes.git repo into ~/dev/tmp/agents/obsidian-hermes-[project_name]
 
-2. branch off, create a new branch called agent/[project_name]
+2. branch off from development branch, create a new branch called agent/[project_name]
 
 3. See if the plan makes sense to you
 
@@ -17,6 +17,6 @@ If so, ask for approval.
 
 4. When done, push to GitHub
 
-5. Create a PR when done.
+5. Create a PR back to development branch when done
 
 6. List all the more complicated questions that came up during the process. Show a short summary of what happened!
