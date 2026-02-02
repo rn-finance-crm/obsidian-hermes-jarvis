@@ -12,7 +12,9 @@ export interface HermesSettings {
   systemInstruction: string;
   manualApiKey: string;
   serperApiKey: string;
+  perplexityApiKey?: string;
   chatHistoryFolder: string;
+  webSearchProvider: 'google' | 'serper' | 'perplexity';
 }
 
 export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
@@ -21,7 +23,9 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   systemInstruction: '',
   manualApiKey: '',
   serperApiKey: '',
+  perplexityApiKey: '',
   chatHistoryFolder: 'chat-history',
+  webSearchProvider: 'google',
 };
 
 export class HermesSettingsTab extends PluginSettingTab {
@@ -116,15 +120,32 @@ export class HermesSettingsTab extends PluginSettingTab {
 
     // API Key Section
     new Setting(containerEl)
-      .setName('API authentication')
+      .setName('API keys and authentication')
       .setHeading();
+
+    // Documentation link
+    const docFragment = document.createDocumentFragment();
+    const docText = docFragment.createSpan({ text: 'Bring your own API keys! ' });
+    const docLink = docFragment.createEl('a', {
+      href: 'https://ai.google.dev/gemini-api/docs/billing',
+      text: `Learn more about billing for google's API`,
+    });
+    docLink.setAttr('target', '_blank');
+    docText.append(docLink);
+
+    new Setting(containerEl)
+      .setDesc(docFragment);
+
+
+    // Get current provider for validation display
+    const currentProvider = this.plugin.settings?.webSearchProvider || DEFAULT_HERMES_SETTINGS.webSearchProvider;
 
     new Setting(containerEl)
       .setName('Gemini API key')
-      .setDesc('Enter your gemini API key for the voice assistant')
+      .setDesc('Required for the gemini live API and search interface. Enter your Gemini API key.')
       .addText((text) => {
         text
-          .setPlaceholder('Enter your gemini API key')
+          .setPlaceholder('Enter your Gemini API key')
           .setValue(this.plugin.settings?.manualApiKey || '')
           .onChange(async (value) => {
             if (this.plugin.settings) {
@@ -135,37 +156,23 @@ export class HermesSettingsTab extends PluginSettingTab {
         text.inputEl.type = 'password';
       });
 
-    // Chat History Folder
-    new Setting(containerEl)
-      .setName('Chat history folder')
-      .setDesc('Folder path where chat history will be saved')
-      .addText((text) => {
-        text
-          .setPlaceholder('Chat history, default chat-history')
-          .setValue(this.plugin.settings?.chatHistoryFolder || DEFAULT_HERMES_SETTINGS.chatHistoryFolder)
-          .onChange(async (value) => {
-            if (this.plugin.settings) {
-              this.plugin.settings.chatHistoryFolder = value;
-              await saveAppSettings(this.plugin.settings);
-            }
-          });
-      });
-
-    // Serper API key for image search
+    // Serper API key for web search
     const serperFragment = document.createDocumentFragment();
-    serperFragment.createSpan({ text: 'API key for image search. Get 2,500 free credits at ' });
+    serperFragment.createSpan({ text: currentProvider === 'serper' 
+      ? 'Required for Serper.dev search. Get 2,500 free credits at ' 
+      : 'Optional for Serper.dev search. I use this, so web searches are below a second, found google is piping it though gemini that makes it extra slow. It is 1 credit per search and you get 2,500 free credits at ' });
     const serperLink = serperFragment.createEl('a', {
       href: 'https://serper.dev/',
-      text: 'Serperdev', //skip This is the service's name.
+      text: 'Serper.dev',
     });
     serperLink.setAttr('target', '_blank');
 
-    new Setting(containerEl)
+    const serperSetting = new Setting(containerEl)
       .setName('Serper API key')
       .setDesc(serperFragment)
       .addText((text) => {
         text
-          .setPlaceholder('Enter your serper API key')
+          .setPlaceholder('Enter your Serper API key')
           .setValue(this.plugin.settings?.serperApiKey || '')
           .onChange(async (value) => {
             if (this.plugin.settings) {
@@ -176,18 +183,39 @@ export class HermesSettingsTab extends PluginSettingTab {
         text.inputEl.type = 'password';
       });
 
-    // Documentation link
-    const docFragment = document.createDocumentFragment();
-    const docText = docFragment.createSpan({ text: 'API keys are handled via manual entry' });
-    const docLink = docFragment.createEl('a', {
-      href: 'https://ai.google.dev/gemini-api/docs/billing',
-      text: 'Learn more about billing.',
-    });
-    docLink.setAttr('target', '_blank');
-    docText.append(docLink);
+    // Add warning styling if Serper is selected but no API key is set
+    if (currentProvider === 'serper' && !this.plugin.settings?.serperApiKey) {
+      const warningFragment = document.createDocumentFragment();
+      const warningText = warningFragment.createSpan({ 
+        text: '⚠️ Warning: Serper.dev is selected but no API key is configured. Web search will not work.' 
+      });
+      warningText.addClass('hermes-warning-text');
+      
+      serperSetting.setDesc(warningFragment);
+      serperSetting.settingEl.addClass('hermes-setting-warning');
+    }
 
+
+    // Web Search Provider Selection
     new Setting(containerEl)
-      .setDesc(docFragment);
+      .setName('Web search provider')
+      .setDesc('Select the default web search provider')
+      .addDropdown((dropdown) => {
+        dropdown.addOption('google', 'Google (Gemini Search)');
+        dropdown.addOption('serper', 'Serper.dev');
+        // Note: perplexity is available in type but not shown in UI per user request
+        dropdown
+          .setValue(this.plugin.settings?.webSearchProvider || DEFAULT_HERMES_SETTINGS.webSearchProvider)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.webSearchProvider = value as 'google' | 'serper' | 'perplexity';
+              await saveAppSettings(this.plugin.settings);
+              // Refresh settings to update API key field states
+              this.display();
+            }
+          });
+      });
+
 
     // Build info at the bottom
     const versionFragment = document.createDocumentFragment();
