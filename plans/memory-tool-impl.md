@@ -18,7 +18,7 @@ When the user tells Hermes a specific future behavior (e.g., "always format date
   - `content`: The behavior/preference to remember
 - **Execute logic**:
   1. List existing memory files in `{chatHistoryFolder}/memory/`
-  2. Search for a memory with similar title/topic
+  2. Search for a memory with similar title/topic/content
   3. If found → **update** existing file
   4. If not found → **create** new file
 - **Instruction**: Guide AI on when to use (user states preferences, behaviors, rules)
