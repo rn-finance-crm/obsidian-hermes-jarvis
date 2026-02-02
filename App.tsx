@@ -125,6 +125,44 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     addLog(message, 'info');
   }, [addLog, isObsidianEnvironment]);
 
+  const buildInitialSystemMessage = useCallback((): TranscriptionEntry => {
+    const formatValue = (value: string | null | undefined, fallback = '(none)') => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : fallback;
+    };
+
+    const contextLines = [
+      'Current Context Snapshot',
+      `Current Note: ${currentNote || 'No active note'}`,
+      `Current Folder: ${currentFolder || '/'}`,
+      `Voice Name: ${formatValue(voiceName, 'Default')}`,
+      '------------------------------------------------',
+      'Custom Context:',
+      '------------------------------------------------',
+      formatValue(customContext),
+      '------------------------------------------------',
+      'System Instruction:',
+      '------------------------------------------------',
+      formatValue(systemInstruction)
+    ];
+
+    return {
+      id: 'welcome-init',
+      role: 'system',
+      text: 'HERMES INITIALIZED.',
+      isComplete: true,
+      timestamp: Date.now(),
+      topicId: currentTopicIdRef.current,
+      toolData: {
+        name: 'system_init',
+        filename: '',
+        status: 'success',
+        dropdown: true,
+        newContent: contextLines.join('\n')
+      }
+    };
+  }, [currentFolder, currentNote, customContext, systemInstruction, voiceName]);
+
   // Helper functions for context sync
   const addModeMarker = (mode: 'voice' | 'text') => {
     const marker: TranscriptionEntry = {
@@ -203,14 +241,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   };
 
   const resetConversation = () => {
-    setTranscripts([{
-      id: 'welcome-init',
-      role: 'system',
-      text: 'HERMES INITIALIZED.',
-      isComplete: true,
-      timestamp: Date.now(),
-      topicId: currentTopicIdRef.current
-    }]);
+    setTranscripts([buildInitialSystemMessage()]);
     setHasSavedConversation(false);
     addLog('Conversation reset', 'info');
   };
@@ -301,20 +332,13 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         // Check if we have chat history to restore
         const chatHistory = loadChatHistory();
         if (transcripts.length === 0 && (!chatHistory || chatHistory.length === 0)) {
-          setTranscripts([{
-            id: 'welcome-init',
-            role: 'system',
-            text: 'HERMES INITIALIZED.',
-            isComplete: true,
-            timestamp: Date.now(),
-            topicId: currentTopicIdRef.current
-          }]);
+          setTranscripts([buildInitialSystemMessage()]);
         }
       } catch (error) {
         addLog(`Initialization failed: ${getErrorMessage(error)}`, 'error');
       }
     })();
-  }, [addLog]);
+  }, [addLog, buildInitialSystemMessage]);
 
   useEffect(() => {
     void saveAppSettings({

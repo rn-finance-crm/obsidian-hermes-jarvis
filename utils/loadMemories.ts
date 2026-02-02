@@ -15,7 +15,16 @@ export const loadMemories = async (
   const memoryFolder = `${settings.chatHistoryFolder}/memory`;
 
   try {
-    const filePaths = getFolderTree(memoryFolder);
+    let filePaths: string[] = [];
+    
+    // Try to get folder contents - it may not exist yet
+    try {
+      filePaths = getFolderTree(memoryFolder);
+    } catch (e) {
+      // Memory folder doesn't exist yet - that's OK, just return empty
+      return '';
+    }
+    
     const mdFiles = filePaths.filter((f) => f.endsWith('.md'));
 
     if (mdFiles.length === 0) {
@@ -66,7 +75,8 @@ export const loadMemories = async (
 
     return `USER_MEMORIES:\n${memoriesText}`;
   } catch (e) {
-    // Memory folder doesn't exist or can't be read
+    // Unexpected error - log it but don't crash
+    console.error('Error loading memories:', e);
     return '';
   }
 };
