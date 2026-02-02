@@ -134,6 +134,23 @@ export async function openFileInObsidian(filename: string, options: OpenFileOpti
   }
 }
 
+/**
+ * Gets the currently active file in Obsidian
+ * @returns Object with current note path and folder, or null values if not in Obsidian
+ */
+export function getActiveFileInfo(): { currentNote: string | null; currentFolder: string } {
+  const workspace = getWorkspace();
+  if (!workspace) {
+    return { currentNote: null, currentFolder: '/' };
+  }
+  
+  const activeFile = workspace.getActiveFile();
+  return {
+    currentNote: activeFile?.path || null,
+    currentFolder: activeFile?.parent?.path || '/'
+  };
+}
+
 export function getDirectoryFromPath(filePath: string): string {
   if (!filePath || typeof filePath !== 'string') {
     return '/';

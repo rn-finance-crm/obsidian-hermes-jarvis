@@ -17,7 +17,7 @@ import * as topic_switch from '../tools/topic_switch';
 import * as web_search from '../tools/web_search';
 import * as end_conversation from '../tools/end_conversation';
 import * as image_search from '../tools/image_search';
-import * as context from '../tools/context';
+import * as getUserVaultContext from '../tools/getUserVaultContext';
 import * as save_memory from '../tools/save_memory';
 import * as delete_memory from '../tools/delete_memory';
 
@@ -40,7 +40,7 @@ const toolInstructions = [
   web_search.instruction,
   image_search.instruction,
   end_conversation.instruction,
-  context.instruction,
+  getUserVaultContext.instruction,
   save_memory.instruction,
   delete_memory.instruction
 ].join('\n\n');

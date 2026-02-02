@@ -120,22 +120,28 @@ export const execute = async (
       throw new Error('Chat history folder not configured in settings');
     }
 
+    console.log('[SAVE_MEMORY] Chat history folder:', settings.chatHistoryFolder);
     const memoryFolder = `${settings.chatHistoryFolder}/memory`;
+    console.log('[SAVE_MEMORY] Memory folder:', memoryFolder);
 
     // Ensure memory folder exists
     try {
       await createDirectory(memoryFolder);
+      console.log('[SAVE_MEMORY] Created/verified memory folder:', memoryFolder);
     } catch (e) {
       // Folder might already exist, continue
+      console.log('[SAVE_MEMORY] Memory folder already exists or error creating:', e instanceof Error ? e.message : e);
     }
 
     // Read existing memories
     const existingMemories = await readExistingMemories(memoryFolder);
+    console.log('[SAVE_MEMORY] Existing memories found:', Array.from(existingMemories.keys()));
     const existingFile = findMatchingMemory(title, existingMemories);
 
     // Generate filename
     const filename = existingFile || generateMemoryFilename(title);
     const filePath = `${memoryFolder}/${filename}`;
+    console.log('[SAVE_MEMORY] Saving memory to:', filePath);
 
     // Create memory content with frontmatter
     const now = new Date().toISOString();

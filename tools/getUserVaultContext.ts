@@ -26,7 +26,7 @@ const getNumberArg = (args: ToolArgs, key: string, fallback?: number): number | 
 };
 
 export const declaration = {
-  name: 'context',
+  name: 'get_user_vault_context',
   description: 'Provides comprehensive context about the current Obsidian environment including current note, folder, opened files, chat history, recent files, directory structure, and most used tags.',
   parameters: {
     type: Type.OBJECT,
@@ -63,7 +63,7 @@ export const declaration = {
   }
 };
 
-export const instruction = `- context: Use this to get comprehensive context about the current Obsidian environment including current note, folder, opened files, chat history, recent files, directory structure, and most used tags.`;
+export const instruction = `- get_user_vault_context: Use this to get comprehensive context about the current Obsidian environment including current note, folder, opened files, chat history, recent files, directory structure, and most used tags.`;
 
 const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -127,7 +127,7 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
   
   if (!app || !app.workspace) {
     callbacks.onSystem('Error: Not running in Obsidian or workspace unavailable', {
-      name: 'context',
+      name: 'get_user_vault_context',
       filename: 'Context',
       error: 'Obsidian workspace not available'
     });
@@ -298,7 +298,7 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
     const displayText = displaySections.join('\n');
 
     callbacks.onSystem('Context information retrieved', {
-      name: 'context',
+      name: 'get_user_vault_context',
       filename: 'Environment Context',
       status: 'success',
       displayFormat: displayText,
@@ -312,7 +312,7 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
     console.error('Context tool error:', error);
     const errorMessage = error instanceof Error ? error.message : String(error);
     callbacks.onSystem('Error retrieving context information', {
-      name: 'context',
+      name: 'get_user_vault_context',
       filename: 'Context',
       status: 'error',
       error: errorMessage

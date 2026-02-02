@@ -11,6 +11,7 @@ import { isObsidian } from './utils/environment';
 import { executeCommand } from './services/commands';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
+import { getSystemPrompt } from './services/getSystemPrompt';
 
 // Components
 import Header from './components/Header';
@@ -125,25 +126,51 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     addLog(message, 'info');
   }, [addLog, isObsidianEnvironment]);
 
-  const buildInitialSystemMessage = useCallback((): TranscriptionEntry => {
-    const formatValue = (value: string | null | undefined, fallback = '(none)') => {
-      const trimmed = value?.trim();
-      return trimmed ? trimmed : fallback;
+  const buildInitialSystemMessage = useCallback(async (): Promise<TranscriptionEntry> => {
+    const fullSettings = loadAppSettings() ?? saved;
+    console.warn('[App.buildInitialSystemMessage] fullSettings:', {
+      hasChatHistoryFolder: !!(fullSettings as AppSettings).chatHistoryFolder,
+      chatHistoryFolder: (fullSettings as AppSettings).chatHistoryFolder
+    });
+
+    const settings: AppSettings = {
+      ...(fullSettings as AppSettings),
+      voiceName,
+      customContext,
+      systemInstruction,
+      manualApiKey,
+      serperApiKey,
+      currentFolder,
+      currentNote,
+      totalTokens
     };
 
+    console.warn('[App.buildInitialSystemMessage] settings after merge:', {
+      chatHistoryFolder: settings.chatHistoryFolder
+    });
+
+    const { systemInstruction: fullSystemPrompt, contextSummary } = await getSystemPrompt({
+      settings,
+      currentFolder,
+      currentNote,
+      interfaceType: 'text'
+    });
+
+    console.warn('[App.buildInitialSystemMessage] getSystemPrompt returned:', {
+      promptLength: fullSystemPrompt.length,
+      hasMemories: fullSystemPrompt.includes('USER_MEMORIES'),
+      contextSummary
+    });
+
     const contextLines = [
-      'Current Context Snapshot',
-      `Current Note: ${currentNote || 'No active note'}`,
-      `Current Folder: ${currentFolder || '/'}`,
-      `Voice Name: ${formatValue(voiceName, 'Default')}`,
-      '------------------------------------------------',
-      'Custom Context:',
-      '------------------------------------------------',
-      formatValue(customContext),
-      '------------------------------------------------',
-      'System Instruction:',
-      '------------------------------------------------',
-      formatValue(systemInstruction)
+      contextSummary,
+      '',
+      '---',
+      '',
+      '**Full System Prompt Sent to AI:**',
+      '```',
+      fullSystemPrompt,
+      '```'
     ];
 
     return {
@@ -161,7 +188,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         newContent: contextLines.join('\n')
       }
     };
-  }, [currentFolder, currentNote, customContext, systemInstruction, voiceName]);
+  }, [currentFolder, currentNote, customContext, systemInstruction, voiceName, manualApiKey, serperApiKey, totalTokens, saved]);
 
   // Helper functions for context sync
   const addModeMarker = (mode: 'voice' | 'text') => {
@@ -240,8 +267,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     }
   };
 
-  const resetConversation = () => {
-    setTranscripts([buildInitialSystemMessage()]);
+  const resetConversation = async () => {
+    const initialMessage = await buildInitialSystemMessage();
+    setTranscripts([initialMessage]);
     setHasSavedConversation(false);
     addLog('Conversation reset', 'info');
   };
@@ -332,7 +360,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         // Check if we have chat history to restore
         const chatHistory = loadChatHistory();
         if (transcripts.length === 0 && (!chatHistory || chatHistory.length === 0)) {
-          setTranscripts([buildInitialSystemMessage()]);
+          const initialMessage = await buildInitialSystemMessage();
+          setTranscripts([initialMessage]);
         }
       } catch (error) {
         addLog(`Initialization failed: ${getErrorMessage(error)}`, 'error');
@@ -721,10 +750,14 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       }
       
       // Create and start voice session with conversation history in system prompt
+      // Get chatHistoryFolder from persisted settings
+      const fullSettings = loadAppSettings();
+      const chatHistoryFolder = fullSettings?.chatHistoryFolder;
+      
       assistantRef.current = new GeminiVoiceAssistant(assistantCallbacks);
       await assistantRef.current.start(
         activeKey, 
-        { voiceName, customContext, systemInstruction }, 
+        { voiceName, customContext, systemInstruction, chatHistoryFolder }, 
         { folder: currentFolder, note: currentNote },
         conversationHistory
       );

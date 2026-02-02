@@ -27,7 +27,7 @@ import * as list_trash from '../tools/list_trash';
 import * as restore_from_trash from '../tools/restore_from_trash';
 import * as get_obsidian_commands from '../tools/get_obsidian_commands';
 import * as run_obsidian_command from '../tools/run_obsidian_command';
-import * as context from '../tools/context';
+import * as getUserVaultContext from '../tools/getUserVaultContext';
 import * as save_memory from '../tools/save_memory';
 import * as delete_memory from '../tools/delete_memory';
 import { ToolData, ToolCallbacks } from '../types';
@@ -84,7 +84,7 @@ const TOOLS: Record<string, ToolModule> = {
   restore_from_trash,
   get_obsidian_commands,
   run_obsidian_command,
-  context,
+  get_user_vault_context: getUserVaultContext,
   save_memory,
   delete_memory
 };

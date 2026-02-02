@@ -8,6 +8,7 @@ import { AppSettings } from '../types';
 export const loadMemories = async (
   settings: AppSettings
 ): Promise<string> => {
+  
   if (!settings.chatHistoryFolder) {
     return '';
   }
@@ -20,7 +21,7 @@ export const loadMemories = async (
     // Try to get folder contents - it may not exist yet
     try {
       filePaths = getFolderTree(memoryFolder);
-    } catch (e) {
+    } catch {
       // Memory folder doesn't exist yet - that's OK, just return empty
       return '';
     }
@@ -58,7 +59,7 @@ export const loadMemories = async (
         }
 
         memories.push({ title, content });
-      } catch (e) {
+      } catch {
         // Skip files that can't be read
         continue;
       }
@@ -73,7 +74,8 @@ export const loadMemories = async (
       .map((m) => `- ${m.title}: ${m.content}`)
       .join('\n');
 
-    return `USER_MEMORIES:\n${memoriesText}`;
+    const result = `USER_MEMORIES:\n${memoriesText}`;
+      return result;
   } catch (e) {
     // Unexpected error - log it but don't crash
     console.error('Error loading memories:', e);

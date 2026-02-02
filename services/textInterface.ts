@@ -2,7 +2,7 @@ import { GoogleGenAI, Content, Part, FunctionCall } from '@google/genai';
 import { AppSettings, UsageMetadata, ToolData, LogEntry } from '../types';
 import { COMMAND_DECLARATIONS, executeCommand } from './commands';
 import { withRetry, RetryCounter } from '../utils/retryUtils';
-import { loadMemories } from '../utils/loadMemories';
+import { getSystemPrompt } from './getSystemPrompt';
 
 export interface TextInterfaceCallbacks {
   onLog: (message: string, type: LogEntry['type'], duration?: number, errorDetails?: LogEntry['errorDetails']) => void;
@@ -38,17 +38,17 @@ export class GeminiTextInterface {
 
     this.ai = new GoogleGenAI({ apiKey });
 
-    const contextString = `
-CURRENT_CONTEXT:
-Current Folder Path: ${this.currentFolder}
-Current Note Name: ${this.currentNote || 'No note currently selected'}
-`;
-    // Load memories from storage
-    const memoriesSection = await loadMemories(settings);
-    const memoriesInjection = memoriesSection ? `\n\n${memoriesSection}\n` : '';
-    this.systemInstruction = `${settings.systemInstruction}\n${contextString}${memoriesInjection}\n${settings.customContext}`.trim();
+    const { systemInstruction, contextSummary } = await getSystemPrompt({
+      settings,
+      currentFolder: this.currentFolder,
+      currentNote: this.currentNote,
+      interfaceType: 'text'
+    });
+
+    this.systemInstruction = systemInstruction;
 
     this.callbacks.onLog('Text interface ready.', 'info');
+    this.callbacks.onSystemMessage(`**Session initialized**\n${contextSummary}`);
   }
 
   async sendMessage(text: string): Promise<void> {
