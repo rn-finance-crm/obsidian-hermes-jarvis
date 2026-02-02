@@ -8,6 +8,7 @@ import { withRetry, RetryCounter } from '../utils/retryUtils';
 import { getErrorMessage } from '../utils/getErrorMessage';
 import { requestWakeLock, releaseWakeLock, clearWakeLockReleaseHandler } from './wakeLock';
 import { startSilentAudio, stopSilentAudio } from './silentAudio';
+import { getSystemPrompt } from './getSystemPrompt';
 
 type LiveSession = {
   sendRealtimeInput: (payload: { media: { data: string | Uint8Array; mimeType: string } }) => void;
@@ -134,19 +135,18 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       this.inputStream = stream;
       
-      const contextString = `
-CURRENT_CONTEXT:
-Current Folder Path: ${this.currentFolder}
-Current Note Name: ${this.currentNote || 'No note currently selected'}
-`;
-      // Include conversation history in system prompt if provided
-      const historySection = conversationHistory ? `\n\nPREVIOUS_CONVERSATION:\n${conversationHistory}\n` : '';
-      const systemInstruction = `${settings.systemInstruction}\n${contextString}${historySection}\n${settings.customContext}`.trim();
+      const { systemInstruction, contextSummary } = await getSystemPrompt({
+        settings,
+        currentFolder: this.currentFolder,
+        currentNote: this.currentNote,
+        interfaceType: 'voice',
+        conversationHistory
+      });
 
-      // System instruction debug summary
       console.debug(`System instruction: ${systemInstruction.length} chars, folder: ${this.currentFolder}, note: ${this.currentNote}`);
       
       this.callbacks.onLog(`System instruction size: ${systemInstruction.length} chars`, 'info');
+      this.callbacks.onSystemMessage(`**Session initialized**\n${contextSummary}`);
 
       // Session configuration debug summary
       console.debug(`Session config: model=gemini-2.5-flash-native-audio-preview-12-2025, tools=${COMMAND_DECLARATIONS.length}, voice=${settings.voiceName}`);

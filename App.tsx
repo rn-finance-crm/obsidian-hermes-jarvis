@@ -11,6 +11,7 @@ import { isObsidian } from './utils/environment';
 import { executeCommand } from './services/commands';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
+import { getSystemPrompt } from './services/getSystemPrompt';
 
 // Components
 import Header from './components/Header';
@@ -125,6 +126,70 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     addLog(message, 'info');
   }, [addLog, isObsidianEnvironment]);
 
+  const buildInitialSystemMessage = useCallback(async (): Promise<TranscriptionEntry> => {
+    const fullSettings = loadAppSettings() ?? saved;
+    console.warn('[App.buildInitialSystemMessage] fullSettings:', {
+      hasChatHistoryFolder: !!(fullSettings as AppSettings).chatHistoryFolder,
+      chatHistoryFolder: (fullSettings as AppSettings).chatHistoryFolder
+    });
+
+    const settings: AppSettings = {
+      ...(fullSettings as AppSettings),
+      voiceName,
+      customContext,
+      systemInstruction,
+      manualApiKey,
+      serperApiKey,
+      currentFolder,
+      currentNote,
+      totalTokens
+    };
+
+    console.warn('[App.buildInitialSystemMessage] settings after merge:', {
+      chatHistoryFolder: settings.chatHistoryFolder
+    });
+
+    const { systemInstruction: fullSystemPrompt, contextSummary } = await getSystemPrompt({
+      settings,
+      currentFolder,
+      currentNote,
+      interfaceType: 'text'
+    });
+
+    console.warn('[App.buildInitialSystemMessage] getSystemPrompt returned:', {
+      promptLength: fullSystemPrompt.length,
+      hasMemories: fullSystemPrompt.includes('USER_MEMORIES'),
+      contextSummary
+    });
+
+    const contextLines = [
+      contextSummary,
+      '',
+      '---',
+      '',
+      '**Full System Prompt Sent to AI:**',
+      '```',
+      fullSystemPrompt,
+      '```'
+    ];
+
+    return {
+      id: 'welcome-init',
+      role: 'system',
+      text: 'HERMES INITIALIZED.',
+      isComplete: true,
+      timestamp: Date.now(),
+      topicId: currentTopicIdRef.current,
+      toolData: {
+        name: 'system_init',
+        filename: '',
+        status: 'success',
+        dropdown: true,
+        newContent: contextLines.join('\n')
+      }
+    };
+  }, [currentFolder, currentNote, customContext, systemInstruction, voiceName, manualApiKey, serperApiKey, totalTokens, saved]);
+
   // Helper functions for context sync
   const addModeMarker = (mode: 'voice' | 'text') => {
     const marker: TranscriptionEntry = {
@@ -202,15 +267,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     }
   };
 
-  const resetConversation = () => {
-    setTranscripts([{
-      id: 'welcome-init',
-      role: 'system',
-      text: 'HERMES INITIALIZED.',
-      isComplete: true,
-      timestamp: Date.now(),
-      topicId: currentTopicIdRef.current
-    }]);
+  const resetConversation = async () => {
+    const initialMessage = await buildInitialSystemMessage();
+    setTranscripts([initialMessage]);
     setHasSavedConversation(false);
     addLog('Conversation reset', 'info');
   };
@@ -301,20 +360,14 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         // Check if we have chat history to restore
         const chatHistory = loadChatHistory();
         if (transcripts.length === 0 && (!chatHistory || chatHistory.length === 0)) {
-          setTranscripts([{
-            id: 'welcome-init',
-            role: 'system',
-            text: 'HERMES INITIALIZED.',
-            isComplete: true,
-            timestamp: Date.now(),
-            topicId: currentTopicIdRef.current
-          }]);
+          const initialMessage = await buildInitialSystemMessage();
+          setTranscripts([initialMessage]);
         }
       } catch (error) {
         addLog(`Initialization failed: ${getErrorMessage(error)}`, 'error');
       }
     })();
-  }, [addLog]);
+  }, [addLog, buildInitialSystemMessage]);
 
   useEffect(() => {
     void saveAppSettings({
@@ -614,16 +667,28 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
 
   // Initialize text interface when API key is available (for text mode)
   useEffect(() => {
-    const activeKey = manualApiKey.trim();
-    if (activeKey && !textInterfaceRef.current) {
-      textInterfaceRef.current = new GeminiTextInterface({
-        onLog: (m, t, d, e) => addLog(m, t, d, e),
-        onTranscription: (role, text, isComplete) => {
-          setTranscripts(prev => {
-            const activeIdx = prev.reduceRight((acc, e, i) => (acc !== -1 ? acc : (e.role === role && !e.isComplete ? i : -1)), -1);
-            if (activeIdx !== -1) {
-              const updated = [...prev];
-              updated[activeIdx] = { ...updated[activeIdx], text: text || updated[activeIdx].text, isComplete };
+    const initializeTextInterface = async () => {
+      const activeKey = manualApiKey.trim();
+      if (activeKey && !textInterfaceRef.current) {
+        textInterfaceRef.current = new GeminiTextInterface({
+          onLog: (m, t, d, e) => addLog(m, t, d, e),
+          onTranscription: (role, text, isComplete) => {
+            setTranscripts(prev => {
+              const activeIdx = prev.reduceRight((acc, e, i) => (acc !== -1 ? acc : (e.role === role && !e.isComplete ? i : -1)), -1);
+              if (activeIdx !== -1) {
+                const updated = [...prev];
+                updated[activeIdx] = { ...updated[activeIdx], text: text || updated[activeIdx].text, isComplete };
+                
+                // Save completed user messages to chat history
+                if (role === 'user' && isComplete && text.trim()) {
+                  const currentHistory = loadChatHistory();
+                  const updatedHistory = [...currentHistory, text];
+                  void saveChatHistory(updatedHistory);
+                }
+                
+                return updated;
+              }
+              const newEntry = { id: Math.random().toString(36).slice(2, 11), role, text, isComplete, timestamp: Date.now(), topicId: currentTopicIdRef.current };
               
               // Save completed user messages to chat history
               if (role === 'user' && isComplete && text.trim()) {
@@ -632,38 +697,32 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
                 void saveChatHistory(updatedHistory);
               }
               
-              return updated;
+              return [...prev, newEntry];
+            });
+          },
+          onSystemMessage: handleSystemMessage,
+          onFileStateChange: (folder, note) => {
+            setCurrentFolder(folder);
+            const notes = Array.isArray(note) ? note : (note ? [note] : []);
+            if (notes.length > 0) {
+              setCurrentNote(notes[notes.length - 1]);
             }
-            const newEntry = { id: Math.random().toString(36).slice(2, 11), role, text, isComplete, timestamp: Date.now(), topicId: currentTopicIdRef.current };
-            
-            // Save completed user messages to chat history
-            if (role === 'user' && isComplete && text.trim()) {
-              const currentHistory = loadChatHistory();
-              const updatedHistory = [...currentHistory, text];
-              void saveChatHistory(updatedHistory);
-            }
-            
-            return [...prev, newEntry];
-          });
-        },
-        onSystemMessage: handleSystemMessage,
-        onFileStateChange: (folder, note) => {
-          setCurrentFolder(folder);
-          const notes = Array.isArray(note) ? note : (note ? [note] : []);
-          if (notes.length > 0) {
-            setCurrentNote(notes[notes.length - 1]);
-          }
-        },
-        onUsageUpdate: (usage: UsageMetadata) => { 
-          setUsage(usage);
-          const tokens = usage.totalTokenCount;
-          if (tokens !== undefined) setTotalTokens(tokens); 
-        },
-        onArchiveConversation: archiveCurrentConversation
-      });
-      
-      textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
-    }
+          },
+          onUsageUpdate: (usage: UsageMetadata) => { 
+            setUsage(usage);
+            const tokens = usage.totalTokenCount;
+            if (tokens !== undefined) setTotalTokens(tokens); 
+          },
+          onArchiveConversation: archiveCurrentConversation
+        });
+        
+        await textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
+      }
+    };
+    
+    initializeTextInterface().catch((error) => {
+      addLog(`Failed to initialize text interface: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    });
   }, [manualApiKey, voiceName, customContext, systemInstruction, currentFolder, currentNote, addLog, handleSystemMessage, archiveCurrentConversation]);
 
   const startSession = async () => {
@@ -691,10 +750,14 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       }
       
       // Create and start voice session with conversation history in system prompt
+      // Get chatHistoryFolder from persisted settings
+      const fullSettings = loadAppSettings();
+      const chatHistoryFolder = fullSettings?.chatHistoryFolder;
+      
       assistantRef.current = new GeminiVoiceAssistant(assistantCallbacks);
       await assistantRef.current.start(
         activeKey, 
-        { voiceName, customContext, systemInstruction }, 
+        { voiceName, customContext, systemInstruction, chatHistoryFolder }, 
         { folder: currentFolder, note: currentNote },
         conversationHistory
       );
@@ -725,7 +788,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     }
   };
 
-  const handleSendText = (e: React.FormEvent) => {
+  const handleSendText = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!inputText.trim()) return;
     
@@ -779,7 +842,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         onArchiveConversation: archiveCurrentConversation
       });
       
-      textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
+      await textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
     }
     
     // Sync delta to text interface
