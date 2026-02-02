@@ -58,6 +58,11 @@
     font-weight: 500;
   }
   
+  /* Button utilities */
+  button {
+    cursor: pointer !important;
+  }
+  
   /* Settings warning background */
   .hermes-setting-warning {
     background-color: rgba(245, 158, 11, 0.1) !important;

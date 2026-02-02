@@ -33,9 +33,8 @@ const Header: React.FC<HeaderProps> = ({ status: _status, showLogs: _showLogs, o
             {hasContent && onResetConversation && (
               <button 
                 onClick={onResetConversation}
-                className="w-8 h-8 p-1 rounded transition-all hover:hermes-text-normal border-none"
+                className="w-8 h-8 flex items-center justify-center rounded transition-all hover:hermes-text-normal border-none bg-transparent shadow-none opacity-60 hover:opacity-100"
                 style={{
-                  backgroundColor: isListening ? 'var(--hermes-button-text-listening)' : undefined,
                   color: isListening ? 'white' : undefined,
                 }}
                 title="Reset conversation"
