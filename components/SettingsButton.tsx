@@ -33,9 +33,8 @@ const SettingsButton: React.FC<SettingsButtonProps> = ({ onOpenSettings, classNa
   return (
     <button 
       onClick={handleClick} 
-      className={`p-2 transition-all hermes-hover:text-normal border-none ${className}`}
+      className={`transition-all hermes-hover:text-normal border-none bg-transparent shadow-none opacity-60 hover:opacity-100 ${className}`}
       style={{
-        backgroundColor: isListening ? 'var(--hermes-button-text-listening)' : undefined,
         color: isListening ? 'white' : undefined,
       }}
       title="System Settings"

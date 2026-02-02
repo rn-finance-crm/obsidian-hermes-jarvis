@@ -157,3 +157,4 @@ className="bg-[#252525] text-[#e0e0e0]"
 - Any PR with hardcoded colors (like `bg-[#252525]`) will be rejected
 - Always use the `hermes-*` utility classes or CSS variables
 - This ensures consistent theming across Obsidian and standalone modes
+- DO NOT BUILD/deploy, unless asked to. 

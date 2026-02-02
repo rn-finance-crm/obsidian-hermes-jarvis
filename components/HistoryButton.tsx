@@ -9,9 +9,8 @@ const HistoryButton: React.FC<HistoryButtonProps> = ({ onOpenHistory, isListenin
   return (
     <button 
       onClick={onOpenHistory}
-      className="p-2 transition-all hermes-hover:text-normal border-none"
+      className="transition-all hermes-hover:text-normal border-none bg-transparent shadow-none opacity-60 hover:opacity-100"
       style={{
-        backgroundColor: isListening ? 'var(--hermes-button-text-listening)' : undefined,
         color: isListening ? 'white' : undefined,
       }}
       title="View History"

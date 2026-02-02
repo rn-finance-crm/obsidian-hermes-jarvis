@@ -21,7 +21,8 @@
     "release": "./release.sh",
     "deploy": "./deploy.sh",
     "deploy:mobile": "./deploy.sh mobile",
-    "generate-version": "node scripts/generate-version.mjs"
+    "generate-version": "node scripts/generate-version.mjs",
+    "postinstall": "pnpm generate-version"
   },
   "dependencies": {
     "@google/genai": "^1.38.0",

@@ -52,6 +52,26 @@
   .hermes-info { color: #3b82f6; }
   .hermes-info-bg { background-color: #3b82f6; }
   
+  /* Settings warning text */
+  .hermes-warning-text { 
+    color: #f59e0b !important;
+    font-weight: 500;
+  }
+  
+  /* Button utilities */
+  button {
+    cursor: pointer !important;
+  }
+  
+  /* Settings warning background */
+  .hermes-setting-warning {
+    background-color: rgba(245, 158, 11, 0.1) !important;
+    border-left: 3px solid #f59e0b !important;
+    border-radius: 4px !important;
+    padding: 8px 12px !important;
+    margin: 4px 0 !important;
+  }
+  
   /* Interactive utilities */
   .hermes-interactive-bg { background-color: var(--hermes-interactive); }
   

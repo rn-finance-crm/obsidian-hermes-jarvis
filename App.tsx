@@ -524,8 +524,12 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   // Note: Archive is now handled in voiceInterface.stop() to avoid race conditions
   // The previous useEffect that watched for DISCONNECTED status was causing duplicate saves
 
+  // Add a counter for unique system message IDs
+  const systemMessageCounterRef = useRef(0);
+
   const handleSystemMessage = useCallback((text: string, toolData?: ToolData) => {
     setTranscripts(prev => {
+      // Check if this is an update to an existing tool execution
       if (toolData?.id) {
         const existingIdx = prev.findIndex(t => t.toolData?.id === toolData.id);
         if (existingIdx !== -1) {
@@ -538,7 +542,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
           return next;
         }
       }
-      return [...prev, { id: 'sys-' + Date.now(), role: 'system', text, isComplete: true, toolData, timestamp: Date.now(), topicId: currentTopicIdRef.current }];
+      // Generate unique ID using counter + timestamp
+      const uniqueId = `sys-${Date.now()}-${++systemMessageCounterRef.current}`;
+      return [...prev, { id: uniqueId, role: 'system', text, isComplete: true, toolData, timestamp: Date.now(), topicId: currentTopicIdRef.current }];
     });
     setFileCount(listDirectory().length);
   }, []);

@@ -33,6 +33,11 @@ if [ -z "$target" ]; then
   fi
 fi
 
+# Create updating file with timestamp
+updating_file="updating_$(date +%Y%m%d_%H%M%S)"
+touch "$updating_file"
+echo "Deploy: created updating file: $updating_file"
+
 plugin_dir="$target/.obsidian/plugins/plugin-hermes"
 
 if [ -d "$plugin_dir" ]; then
@@ -55,3 +60,11 @@ fi
 
 cp manifest.json main.js styles.css "$plugin_dir"/
 echo "Deploy: copied files to $plugin_dir"
+
+# Touch dummy file to trigger hot-reload
+touch "$plugin_dir"/.hotreload
+echo "Deploy: touched dummy file to trigger hot-reload"
+
+# Delete updating file when done
+rm "$updating_file"
+echo "Deploy: deleted updating file: $updating_file"
