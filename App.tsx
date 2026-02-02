@@ -614,16 +614,28 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
 
   // Initialize text interface when API key is available (for text mode)
   useEffect(() => {
-    const activeKey = manualApiKey.trim();
-    if (activeKey && !textInterfaceRef.current) {
-      textInterfaceRef.current = new GeminiTextInterface({
-        onLog: (m, t, d, e) => addLog(m, t, d, e),
-        onTranscription: (role, text, isComplete) => {
-          setTranscripts(prev => {
-            const activeIdx = prev.reduceRight((acc, e, i) => (acc !== -1 ? acc : (e.role === role && !e.isComplete ? i : -1)), -1);
-            if (activeIdx !== -1) {
-              const updated = [...prev];
-              updated[activeIdx] = { ...updated[activeIdx], text: text || updated[activeIdx].text, isComplete };
+    const initializeTextInterface = async () => {
+      const activeKey = manualApiKey.trim();
+      if (activeKey && !textInterfaceRef.current) {
+        textInterfaceRef.current = new GeminiTextInterface({
+          onLog: (m, t, d, e) => addLog(m, t, d, e),
+          onTranscription: (role, text, isComplete) => {
+            setTranscripts(prev => {
+              const activeIdx = prev.reduceRight((acc, e, i) => (acc !== -1 ? acc : (e.role === role && !e.isComplete ? i : -1)), -1);
+              if (activeIdx !== -1) {
+                const updated = [...prev];
+                updated[activeIdx] = { ...updated[activeIdx], text: text || updated[activeIdx].text, isComplete };
+                
+                // Save completed user messages to chat history
+                if (role === 'user' && isComplete && text.trim()) {
+                  const currentHistory = loadChatHistory();
+                  const updatedHistory = [...currentHistory, text];
+                  void saveChatHistory(updatedHistory);
+                }
+                
+                return updated;
+              }
+              const newEntry = { id: Math.random().toString(36).slice(2, 11), role, text, isComplete, timestamp: Date.now(), topicId: currentTopicIdRef.current };
               
               // Save completed user messages to chat history
               if (role === 'user' && isComplete && text.trim()) {
@@ -632,38 +644,32 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
                 void saveChatHistory(updatedHistory);
               }
               
-              return updated;
+              return [...prev, newEntry];
+            });
+          },
+          onSystemMessage: handleSystemMessage,
+          onFileStateChange: (folder, note) => {
+            setCurrentFolder(folder);
+            const notes = Array.isArray(note) ? note : (note ? [note] : []);
+            if (notes.length > 0) {
+              setCurrentNote(notes[notes.length - 1]);
             }
-            const newEntry = { id: Math.random().toString(36).slice(2, 11), role, text, isComplete, timestamp: Date.now(), topicId: currentTopicIdRef.current };
-            
-            // Save completed user messages to chat history
-            if (role === 'user' && isComplete && text.trim()) {
-              const currentHistory = loadChatHistory();
-              const updatedHistory = [...currentHistory, text];
-              void saveChatHistory(updatedHistory);
-            }
-            
-            return [...prev, newEntry];
-          });
-        },
-        onSystemMessage: handleSystemMessage,
-        onFileStateChange: (folder, note) => {
-          setCurrentFolder(folder);
-          const notes = Array.isArray(note) ? note : (note ? [note] : []);
-          if (notes.length > 0) {
-            setCurrentNote(notes[notes.length - 1]);
-          }
-        },
-        onUsageUpdate: (usage: UsageMetadata) => { 
-          setUsage(usage);
-          const tokens = usage.totalTokenCount;
-          if (tokens !== undefined) setTotalTokens(tokens); 
-        },
-        onArchiveConversation: archiveCurrentConversation
-      });
-      
-      textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
-    }
+          },
+          onUsageUpdate: (usage: UsageMetadata) => { 
+            setUsage(usage);
+            const tokens = usage.totalTokenCount;
+            if (tokens !== undefined) setTotalTokens(tokens); 
+          },
+          onArchiveConversation: archiveCurrentConversation
+        });
+        
+        await textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
+      }
+    };
+    
+    initializeTextInterface().catch((error) => {
+      addLog(`Failed to initialize text interface: ${error instanceof Error ? error.message : String(error)}`, 'error');
+    });
   }, [manualApiKey, voiceName, customContext, systemInstruction, currentFolder, currentNote, addLog, handleSystemMessage, archiveCurrentConversation]);
 
   const startSession = async () => {
@@ -725,7 +731,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     }
   };
 
-  const handleSendText = (e: React.FormEvent) => {
+  const handleSendText = async (e: React.FormEvent) => {
     e.preventDefault(); 
     if (!inputText.trim()) return;
     
@@ -779,7 +785,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         onArchiveConversation: archiveCurrentConversation
       });
       
-      textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
+      await textInterfaceRef.current.initialize(activeKey, { voiceName, customContext, systemInstruction }, { folder: currentFolder, note: currentNote });
     }
     
     // Sync delta to text interface

@@ -2,6 +2,7 @@ import { GoogleGenAI, Content, Part, FunctionCall } from '@google/genai';
 import { AppSettings, UsageMetadata, ToolData, LogEntry } from '../types';
 import { COMMAND_DECLARATIONS, executeCommand } from './commands';
 import { withRetry, RetryCounter } from '../utils/retryUtils';
+import { loadMemories } from '../utils/loadMemories';
 
 export interface TextInterfaceCallbacks {
   onLog: (message: string, type: LogEntry['type'], duration?: number, errorDetails?: LogEntry['errorDetails']) => void;
@@ -23,11 +24,11 @@ export class GeminiTextInterface {
 
   constructor(private callbacks: TextInterfaceCallbacks) {}
 
-  initialize(
+  async initialize(
     apiKey: string,
     settings: AppSettings,
     initialState?: { folder: string; note: string | null }
-  ): void {
+  ): Promise<void> {
     if (initialState) {
       this.currentFolder = initialState.folder;
       this.currentNote = initialState.note;
@@ -42,7 +43,10 @@ CURRENT_CONTEXT:
 Current Folder Path: ${this.currentFolder}
 Current Note Name: ${this.currentNote || 'No note currently selected'}
 `;
-    this.systemInstruction = `${settings.systemInstruction}\n${contextString}\n\n${settings.customContext}`.trim();
+    // Load memories from storage
+    const memoriesSection = await loadMemories(settings);
+    const memoriesInjection = memoriesSection ? `\n\n${memoriesSection}\n` : '';
+    this.systemInstruction = `${settings.systemInstruction}\n${contextString}${memoriesInjection}\n${settings.customContext}`.trim();
 
     this.callbacks.onLog('Text interface ready.', 'info');
   }

@@ -8,6 +8,7 @@ import { withRetry, RetryCounter } from '../utils/retryUtils';
 import { getErrorMessage } from '../utils/getErrorMessage';
 import { requestWakeLock, releaseWakeLock, clearWakeLockReleaseHandler } from './wakeLock';
 import { startSilentAudio, stopSilentAudio } from './silentAudio';
+import { loadMemories } from '../utils/loadMemories';
 
 type LiveSession = {
   sendRealtimeInput: (payload: { media: { data: string | Uint8Array; mimeType: string } }) => void;
@@ -135,13 +136,16 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
       this.inputStream = stream;
       
       const contextString = `
-CURRENT_CONTEXT:
-Current Folder Path: ${this.currentFolder}
-Current Note Name: ${this.currentNote || 'No note currently selected'}
-`;
+      CURRENT_CONTEXT:
+      Current Folder Path: ${this.currentFolder}
+      Current Note Name: ${this.currentNote || 'No note currently selected'}
+      `;
+      // Load memories from storage
+      const memoriesSection = await loadMemories(settings);
       // Include conversation history in system prompt if provided
       const historySection = conversationHistory ? `\n\nPREVIOUS_CONVERSATION:\n${conversationHistory}\n` : '';
-      const systemInstruction = `${settings.systemInstruction}\n${contextString}${historySection}\n${settings.customContext}`.trim();
+      const memoriesInjection = memoriesSection ? `\n\n${memoriesSection}\n` : '';
+      const systemInstruction = `${settings.systemInstruction}\n${contextString}${memoriesInjection}\n${settings.customContext}`.trim();
 
       // System instruction debug summary
       console.debug(`System instruction: ${systemInstruction.length} chars, folder: ${this.currentFolder}, note: ${this.currentNote}`);

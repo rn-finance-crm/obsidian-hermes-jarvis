@@ -1,3 +1,3 @@
 export const PLUGIN_VERSION = "1.4.8";
-export const GIT_BRANCH = "mobile-lock-end-solution";
-export const GIT_COMMIT = "edb203a";
+export const GIT_BRANCH = "agent/memory-tool-impl";
+export const GIT_COMMIT = "3c189bb";
