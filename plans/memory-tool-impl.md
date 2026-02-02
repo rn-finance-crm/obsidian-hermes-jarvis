@@ -12,27 +12,37 @@ When the user tells Hermes a specific future behavior (e.g., "always format date
 
 ## Components to Create/Modify
 
-### 1. New Tool: `tools/memory.ts`
+### 1. New Tool: `tools/save_memory.ts`
 - **Declaration**: `save_memory` tool with parameters:
-  - `title`: Short descriptive title
+  - `title`: Short descriptive title (used as filename slug)
   - `content`: The behavior/preference to remember
-- **Execute**: Creates a `.md` file in `{chatHistoryFolder}/memory/`
+- **Execute logic**:
+  1. List existing memory files in `{chatHistoryFolder}/memory/`
+  2. Search for a memory with similar title/topic
+  3. If found → **update** existing file
+  4. If not found → **create** new file
 - **Instruction**: Guide AI on when to use (user states preferences, behaviors, rules)
 
-### 2. Memory Loading in System Prompt
-Modify `utils/defaultPrompt.ts` or create `utils/loadMemories.ts`:
+### 2. New Tool: `tools/delete_memory.ts`
+- **Declaration**: `delete_memory` tool with parameters:
+  - `title`: Title/filename of memory to delete
+- **Execute**: Removes the `.md` file from `{chatHistoryFolder}/memory/`
+- **Instruction**: Guide AI on when to use (user wants to forget a preference)
+
+### 3. Memory Loading in System Prompt
+Create `utils/loadMemories.ts`:
 - Read all `.md` files from `{chatHistoryFolder}/memory/`
 - Concatenate their contents
 - Inject into system instruction (similar to `customContext`)
 
-### 3. Interface Updates
+### 4. Interface Updates
 Modify `services/voiceInterface.ts` and `services/textInterface.ts`:
 - Load memories at session initialization
 - Append to `systemInstruction` alongside `customContext`
 
-### 4. Settings Integration
-- Use `chatHistoryFolder` from `AppSettings` (already exists in `types.ts`)
-- Memory subfolder path: `{chatHistoryFolder}/memory/`
+### 5. Storage Location
+- Always uses `{chatHistoryFolder}/memory/` (no settings needed)
+- `chatHistoryFolder` already exists in `AppSettings`
 
 ---
 
@@ -40,13 +50,14 @@ Modify `services/voiceInterface.ts` and `services/textInterface.ts`:
 
 | # | Task | Files |
 |---|------|-------|
-| 1 | Create `tools/memory.ts` with `save_memory` declaration and execute | `tools/memory.ts` |
-| 2 | Register tool in `services/commands.ts` | `services/commands.ts` |
-| 3 | Add instruction to `utils/defaultPrompt.ts` | `utils/defaultPrompt.ts` |
-| 4 | Create `utils/loadMemories.ts` to read memory files | `utils/loadMemories.ts` |
-| 5 | Update `voiceInterface.ts` to load memories into system prompt | `services/voiceInterface.ts` |
-| 6 | Update `textInterface.ts` to load memories into system prompt | `services/textInterface.ts` |
-| 7 | Test: save a memory, restart session, verify it's in context | Manual test |
+| 1 | Create `tools/save_memory.ts` with save/update logic | `tools/save_memory.ts` |
+| 2 | Create `tools/delete_memory.ts` | `tools/delete_memory.ts` |
+| 3 | Register both tools in `services/commands.ts` | `services/commands.ts` |
+| 4 | Add instructions to `utils/defaultPrompt.ts` | `utils/defaultPrompt.ts` |
+| 5 | Create `utils/loadMemories.ts` to read memory files | `utils/loadMemories.ts` |
+| 6 | Update `voiceInterface.ts` to load memories into system prompt | `services/voiceInterface.ts` |
+| 7 | Update `textInterface.ts` to load memories into system prompt | `services/textInterface.ts` |
+| 8 | Test: save, update, delete memories; verify loading | Manual test |
 
 ---
 
