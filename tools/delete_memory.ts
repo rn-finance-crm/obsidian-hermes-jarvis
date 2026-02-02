@@ -95,9 +95,9 @@ export const execute = async (
     const filePath = await findMemoryFile(title, memoryFolder);
 
     if (!filePath) {
-      callbacks.onSystemMessage(
+      callbacks.onSystem(
         `Memory not found: No memory titled "${title}" exists.`,
-        { data: { type: 'memory_not_found', title } }
+        { name: 'delete_memory', filename: '', description: `Memory not found: ${title}` }
       );
       return { success: false, message: `Memory "${title}" not found` };
     }
@@ -105,16 +105,18 @@ export const execute = async (
     await deleteFile(filePath);
     const filename = filePath.split('/').pop() || filePath;
 
-    callbacks.onSystemMessage(
+    callbacks.onSystem(
       `Memory deleted: "${title}" has been removed.`,
-      { data: { type: 'memory_deleted', title, filename } }
+      { name: 'delete_memory', filename: filePath, description: `Deleted memory: ${title}` }
     );
 
     return { success: true, filename, title };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    callbacks.onSystemMessage(`Failed to delete memory: ${message}`, {
-      data: { type: 'error', error: message },
+    callbacks.onSystem(`Failed to delete memory: ${message}`, {
+      name: 'delete_memory',
+      filename: '',
+      description: `Error: ${message}`
     });
     throw error;
   }

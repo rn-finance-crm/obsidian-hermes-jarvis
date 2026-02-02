@@ -148,23 +148,25 @@ ${content}`;
     // Save file
     if (existingFile) {
       await updateFile(filePath, memoryContent);
-      callbacks.onSystemMessage(
+      callbacks.onSystem(
         `Memory updated: "${title}" has been updated with new content.`,
-        { data: { type: 'memory_updated', title, filename } }
+        { name: 'save_memory', filename: filePath, description: `Updated memory: ${title}` }
       );
     } else {
       await createFile(filePath, memoryContent);
-      callbacks.onSystemMessage(
+      callbacks.onSystem(
         `Memory saved: "${title}" will be remembered for future sessions.`,
-        { data: { type: 'memory_saved', title, filename } }
+        { name: 'save_memory', filename: filePath, description: `Saved memory: ${title}` }
       );
     }
 
     return { success: true, filename, title };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
-    callbacks.onSystemMessage(`Failed to save memory: ${message}`, {
-      data: { type: 'error', error: message },
+    callbacks.onSystem(`Failed to save memory: ${message}`, {
+      name: 'save_memory',
+      filename: '',
+      description: `Error: ${message}`
     });
     throw error;
   }
