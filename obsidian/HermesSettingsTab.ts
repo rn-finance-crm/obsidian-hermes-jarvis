@@ -230,14 +230,33 @@ export class HermesSettingsTab extends PluginSettingTab {
     // Chat History Folder
     new Setting(containerEl)
       .setName('Chat history and memory folder')
-      .setDesc('Folder path where chat history and memory will be saved')
+      .setDesc('Folder path where chat history and memory will be saved. If the old folder exists, it will be renamed.')
       .addText((text) => {
         text
           .setPlaceholder('Chat history and memory, default chat-history')
           .setValue(this.plugin.settings?.chatHistoryFolder || DEFAULT_HERMES_SETTINGS.chatHistoryFolder)
           .onChange(async (value) => {
             if (this.plugin.settings) {
-              this.plugin.settings.chatHistoryFolder = value;
+              const oldFolder = this.plugin.settings.chatHistoryFolder;
+              const newFolder = value.trim();
+              
+              // Only attempt rename if folders are different and old folder exists
+              if (oldFolder && newFolder && oldFolder !== newFolder) {
+                const normalizedOld = normalizePath(oldFolder);
+                const normalizedNew = normalizePath(newFolder);
+                const oldFolderExists = this.app.vault.getAbstractFileByPath(normalizedOld);
+                const newFolderExists = this.app.vault.getAbstractFileByPath(normalizedNew);
+                
+                if (oldFolderExists && !newFolderExists) {
+                  try {
+                    await renameFile(normalizedOld, normalizedNew);
+                  } catch (e) {
+                    console.error('Failed to rename chat history folder:', e);
+                  }
+                }
+              }
+              
+              this.plugin.settings.chatHistoryFolder = newFolder;
               await saveAppSettings(this.plugin.settings);
             }
           });
