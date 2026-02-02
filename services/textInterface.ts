@@ -103,6 +103,7 @@ Current Note Name: ${this.currentNote || 'No note currently selected'}
     }
 
     const candidate = response.candidates?.[0];
+    console.debug('Text interface API response candidate:', candidate ? JSON.stringify(candidate).substring(0, 500) : 'null');
     if (!candidate?.content) {
       this.callbacks.onTranscription('model', 'No response received.', true);
       return;
@@ -137,6 +138,8 @@ Current Note Name: ${this.currentNote || 'No note currently selected'}
             },
             onArchiveConversation: this.callbacks.onArchiveConversation
           }, this.currentFolder);
+
+          console.debug(`Text interface tool result for ${fc.name}:`, typeof result, result ? JSON.stringify(result).substring(0, 300) : 'null');
 
           functionResponses.push({
             functionResponse: {
@@ -180,11 +183,14 @@ Current Note Name: ${this.currentNote || 'No note currently selected'}
         }
       }
 
-      // Add function responses to history
+      // Add function responses to history with role 'tool' (not 'user')
       this.chatHistory.push({
-        role: 'user',
+        role: 'tool',
         parts: functionResponses
       });
+
+      console.debug('Text interface: Function responses added to history, calling processConversation again');
+      console.debug('Function responses:', JSON.stringify(functionResponses).substring(0, 500));
 
       // Continue the conversation to get the final response
       await this.processConversation();

@@ -136,7 +136,7 @@ export interface AppSettings {
   transcripts?: TranscriptionEntry[];
   totalTokens?: number;
   chatHistory?: string[];
-  webSearchProvider?: 'google' | 'serpapi' | 'perplexity';
+  webSearchProvider?: 'google' | 'serper' | 'perplexity';
 }
 
 export interface VoiceAssistantCallbacks {

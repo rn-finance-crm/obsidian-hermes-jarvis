@@ -41,7 +41,8 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
 
   // Get API key based on provider
   let apiKey: string | undefined;
-  if (provider === 'serpapi') {
+  
+  if (provider === 'serper') {
     apiKey = settings?.serperApiKey?.trim();
   } else if (provider === 'perplexity') {
     apiKey = settings?.perplexityApiKey?.trim();
@@ -58,6 +59,7 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
     const result = await providerInstance.execute(query, apiKey);
 
     const { text, metadata } = result;
+    console.debug('Web search result text length:', text?.length, 'first 200 chars:', text?.substring(0, 200));
     const duration = metadata?.duration || 0;
     const responseLength = text.length;
     const groundingChunks = metadata?.groundingChunks || [];

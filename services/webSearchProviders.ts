@@ -3,7 +3,7 @@
  * Supports pluggable search providers with consistent interface
  */
 
-export type WebSearchProvider = 'google' | 'serpapi' | 'perplexity';
+export type WebSearchProvider = 'google' | 'serper' | 'perplexity';
 
 export interface SearchResult {
   text: string;
@@ -72,10 +72,10 @@ class GoogleSearchProvider implements WebSearchProviderInterface {
 }
 
 /**
- * SerpAPI Search Provider (faster alternative)
+ * Serper Search Provider (faster alternative)
  */
-class SerpAPIProvider implements WebSearchProviderInterface {
-  name: WebSearchProvider = 'serpapi';
+class SerperProvider implements WebSearchProviderInterface {
+  name: WebSearchProvider = 'serper';
 
   validate(apiKey: string): boolean {
     return apiKey && apiKey.trim().length > 0;
@@ -85,31 +85,36 @@ class SerpAPIProvider implements WebSearchProviderInterface {
     const startTime = performance.now();
     
     if (!this.validate(apiKey)) {
-      throw new Error('Invalid SerpAPI key');
+      throw new Error('Invalid Serper API key');
     }
 
     try {
-      const url = new URL('https://serpapi.com/search');
-      url.searchParams.append('api_key', apiKey);
-      url.searchParams.append('q', query);
-      url.searchParams.append('engine', 'google');
-      url.searchParams.append('num', '10');
-
-      const response = await fetch(url.toString());
+      const response = await fetch('https://google.serper.dev/search', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          q: query,
+          num: 10
+        })
+      });
       
       if (!response.ok) {
-        throw new Error(`SerpAPI error: ${response.status}`);
+        throw new Error(`Serper API error: ${response.status}`);
       }
 
       const data = await response.json() as Record<string, unknown>;
-      const results = (data.organic_results as Array<{title?: string; snippet?: string; link?: string}>) || [];
+      console.debug('Serper API response:', JSON.stringify(data, null, 2).substring(0, 500));
+      const results = (data.organic as Array<{title?: string; snippet?: string; link?: string}>) || [];
       
       if (results.length === 0) {
         return {
           text: 'No results found.',
           sourceUrl: undefined,
           metadata: {
-            provider: 'serpapi',
+            provider: 'serper',
             duration: Math.round(performance.now() - startTime),
             resultCount: 0
           }
@@ -118,22 +123,31 @@ class SerpAPIProvider implements WebSearchProviderInterface {
 
       // Format results as readable text
       const text = results
-        .map((r, i) => `${i + 1}. ${r.title}\n${r.snippet}\nURL: ${r.link}`)
+        .map((r, i) => `${i + 1}. **${r.title}**\n${r.snippet}\n[${r.link}](${r.link})`)
         .join('\n\n');
 
       const duration = Math.round(performance.now() - startTime);
+
+      // Convert Serper results to grounding chunks format for UI compatibility
+      const groundingChunks = results.map(r => ({
+        web: {
+          uri: r.link || '',
+          title: r.title || ''
+        }
+      }));
 
       return {
         text,
         sourceUrl: results[0]?.link,
         metadata: {
-          provider: 'serpapi',
+          provider: 'serper',
           duration,
-          resultCount: results.length
+          resultCount: results.length,
+          groundingChunks
         }
       };
     } catch (error) {
-      throw new Error(`SerpAPI search failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Serper search failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
@@ -199,7 +213,7 @@ class WebSearchProviderRegistry {
   constructor() {
     this.providers = new Map([
       ['google', new GoogleSearchProvider()],
-      ['serpapi', new SerpAPIProvider()],
+      ['serper', new SerperProvider()],
       ['perplexity', new PerplexityProvider()]
     ]);
   }
