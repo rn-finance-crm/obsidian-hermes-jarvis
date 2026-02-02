@@ -20,3 +20,5 @@ If so, ask for approval.
 5. Create a PR back to development branch when done
 
 6. List all the more complicated questions that came up during the process. Show a short summary of what happened!
+
+7. open windsurf in that folder!
