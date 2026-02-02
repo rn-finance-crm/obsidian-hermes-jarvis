@@ -1,8 +1,9 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, normalizePath } from 'obsidian';
 import type HermesPlugin from '../main';
 import { DEFAULT_SYSTEM_INSTRUCTION } from '../utils/defaultPrompt';
 import { GIT_BRANCH, GIT_COMMIT, PLUGIN_VERSION } from '../version';
 import { saveAppSettings, loadAppSettings } from '../persistence/persistence';
+import { renameFile } from '../services/vaultOperations';
 
 const AVAILABLE_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Zephyr'];
 
