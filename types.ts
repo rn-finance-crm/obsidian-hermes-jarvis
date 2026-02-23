@@ -28,6 +28,12 @@ export interface SearchResult {
   matches: SearchMatch[];
 }
 
+export interface SemanticSearchResult {
+  filename: string;
+  score: number;
+  key: string;
+}
+
 export interface FileDiff {
   filename: string;
   oldContent?: string;
@@ -55,6 +61,7 @@ export interface ToolData {
   directoryInfo?: DirectoryInfoItem[];
   searchResults?: SearchResult[] | ImageSearchResult[]; // Can be either SearchResult[] or image search results
   searchKeyword?: string;
+  semanticResults?: SemanticSearchResult[];
   multiDiffs?: FileDiff[];
   groundingChunks?: GroundingChunk[];
   truncated?: boolean;
