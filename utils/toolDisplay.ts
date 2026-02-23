@@ -35,7 +35,8 @@ const TOOL_LABELS: Record<string, string> = {
   'reveal_active_pane': 'Active Pane Info',
   'open_folder_in_system': 'System File Browser',
   'end_conversation': 'Session End',
-  'topic_switch': 'Topic Switch'
+  'topic_switch': 'Topic Switch',
+  'start_research': 'Research'
 };
 
 /** Get the human-readable label for a tool name */
@@ -45,6 +46,9 @@ export function getToolActionName(toolName: string): string {
 
 /** Get the filename label to display for a tool call */
 export function getToolFilenameLabel(toolName: string, args: ToolArgs): string {
+  if (toolName === 'start_research') {
+    return getStringArg(args, 'query') || 'Research';
+  }
   return getStringArg(args, 'filename') || ((toolName === 'internet_search' || toolName === 'web_fetch') ? 'Web' : 'Registry');
 }
 

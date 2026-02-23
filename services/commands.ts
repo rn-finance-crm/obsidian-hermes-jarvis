@@ -31,6 +31,7 @@ import * as run_obsidian_command from '../tools/run_obsidian_command';
 import * as getUserVaultContext from '../tools/getUserVaultContext';
 import * as save_memory from '../tools/save_memory';
 import * as delete_memory from '../tools/delete_memory';
+import * as start_research from '../tools/start_research';
 import { ToolData, ToolCallbacks } from '../types';
 
 type ToolArgs = Record<string, unknown>;
@@ -88,7 +89,8 @@ const TOOLS: Record<string, ToolModule> = {
   run_obsidian_command,
   get_user_vault_context: getUserVaultContext,
   save_memory,
-  delete_memory
+  delete_memory,
+  start_research
 };
 
 export const COMMAND_DECLARATIONS = Object.values(TOOLS).map(t => t.declaration);

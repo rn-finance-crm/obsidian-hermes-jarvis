@@ -245,6 +245,7 @@ const specialCases: Record<string, string> = {
   'delete_file': 'DELETE',
   'image_search': 'IMAGE',
   'download_image': 'SAVE',
+  'start_research': 'RESEARCH',
   'context': 'CONTEXT',
   'error': 'ERROR'
 };
@@ -545,21 +546,52 @@ interface SystemMessageProps {
 const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLast, className = '', onImageDownload }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [manuallyToggled, setManuallyToggled] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const isPending = toolData?.status === 'pending';
+  const canExpandWhilePending = toolData?.name === 'start_research';
   const isError = toolData?.status === 'error';
+  const isSuccess = toolData?.status === 'success';
+  const isResearchTool = toolData?.name === 'start_research';
   const hasExpandableContent = toolData && toolData.dropdown !== false && (toolData.newContent || toolData.oldContent || toolData.files || toolData.error || toolData.directoryInfo || toolData.searchResults);
 
+  const formatElapsed = (seconds: number): string => {
+    const safe = Math.max(0, Math.floor(seconds));
+    const mm = String(Math.floor(safe / 60)).padStart(2, '0');
+    const ss = String(safe % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  };
+
   useEffect(() => {
-    if (isLast && !manuallyToggled && !isPending && hasExpandableContent) {
+    if (!isResearchTool) return;
+
+    if (isPending) {
+      setElapsedSeconds(0);
+      const interval = window.setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+      return () => window.clearInterval(interval);
+    }
+
+    if (toolData?.duration !== undefined) {
+      setElapsedSeconds(Math.max(1, Math.round(toolData.duration / 1000)));
+    }
+  }, [isPending, isResearchTool, toolData?.id, toolData?.duration]);
+
+  const displayedSeconds = isPending
+    ? elapsedSeconds
+    : (toolData?.duration !== undefined ? Math.max(1, Math.round(toolData.duration / 1000)) : elapsedSeconds);
+
+  useEffect(() => {
+    if (isLast && !manuallyToggled && (!isPending || canExpandWhilePending) && hasExpandableContent) {
       setIsExpanded(true);
     } else if (!isLast && !manuallyToggled) {
       setIsExpanded(false);
     }
-  }, [isLast, manuallyToggled, isPending, hasExpandableContent]);
+  }, [isLast, manuallyToggled, isPending, hasExpandableContent, canExpandWhilePending]);
 
   const toggle = () => {
-    if (isPending || !hasExpandableContent) return;
+    if ((isPending && !canExpandWhilePending) || !hasExpandableContent) return;
     setIsExpanded(!isExpanded);
     setManuallyToggled(true);
   };
@@ -647,7 +679,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
     >
       <div 
         onClick={toggle}
-        className={`flex items-center justify-between px-2 py-1.5 ${hasExpandableContent && !isPending ? 'cursor-pointer' : 'cursor-default'} transition-colors`}
+        className={`flex items-center justify-between px-2 py-1.5 ${hasExpandableContent && (!isPending || canExpandWhilePending) ? 'cursor-pointer' : 'cursor-default'} transition-colors`}
         style={{ 
           backgroundColor: styles.headerBg
         }}
@@ -655,7 +687,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
         <div className="flex items-center space-x-2 overflow-hidden">
           {isPending && (
             <div className="flex items-center space-x-1 shrink-0">
-              {toolData?.name === 'internet_search' ? (
+              {toolData?.name === 'internet_search' || toolData?.name === 'start_research' ? (
                 <div className="loading-dots-container">
                   <div className="loading-dot"></div>
                   <div className="loading-dot"></div>
@@ -714,8 +746,19 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
           
         </div>
         
-        <div className="flex items-center space-x-4 shrink-0">
-          {!isPending && hasExpandableContent ? (
+        <div className="flex items-center space-x-2 shrink-0">
+          {isResearchTool && (isPending || isSuccess) && (
+            <span
+              className="text-[9px] px-2 py-0.5 rounded font-semibold"
+              style={{
+                backgroundColor: isPending ? 'rgba(245, 158, 11, 0.28)' : 'rgba(16, 185, 129, 0.28)',
+                color: 'var(--hermes-text-normal)'
+              }}
+            >
+              {isPending ? `${displayedSeconds}s` : `${displayedSeconds}s (${formatElapsed(displayedSeconds)})`}
+            </span>
+          )}
+          {(!isPending || canExpandWhilePending) && hasExpandableContent ? (
             <svg 
               className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} 
               style={{ color: styles.accentColor }}
@@ -727,7 +770,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
         </div>
       </div>
 
-      {isExpanded && !isPending && hasExpandableContent && (
+      {isExpanded && (!isPending || canExpandWhilePending) && hasExpandableContent && (
         <>
           {/* Performance Information - Above scrollable content */}
           {toolData?.name === 'internet_search' && (toolData.duration !== undefined || toolData.responseLength !== undefined) && (
@@ -880,6 +923,29 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
               keyword={toolData.searchKeyword}
               pattern={toolData.filename}
             />
+          ) : toolData?.name === 'start_research' ? (
+            <>
+              {toolData?.targetPath && (
+                <div className="p-2 pb-1">
+                  <button
+                    type="button"
+                    className="font-mono text-[10px] underline"
+                    style={{ color: 'var(--hermes-text-accent)' }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void openFileInObsidian(toolData.targetPath as string);
+                    }}
+                  >
+                    Open research file
+                  </button>
+                </div>
+              )}
+              {toolData?.newContent && (
+                <div className="p-2 pt-1 font-mono text-[10px] whitespace-pre-wrap" style={{ color: styles.textColor }}>
+                  {toolData.newContent}
+                </div>
+              )}
+            </>
           ) : (
             <>
               {toolData?.newContent && (

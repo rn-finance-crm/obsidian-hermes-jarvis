@@ -605,8 +605,28 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
 
   // Add a counter for unique system message IDs
   const systemMessageCounterRef = useRef(0);
+  const announcedResearchRef = useRef<Set<string>>(new Set());
 
   const handleSystemMessage = useCallback((text: string, toolData?: ToolData) => {
+    if (toolData?.name === 'start_research' && toolData?.status === 'success' && toolData?.id) {
+      const alreadyAnnounced = announcedResearchRef.current.has(toolData.id);
+      if (!alreadyAnnounced && assistantRef.current && status === ConnectionStatus.CONNECTED) {
+        announcedResearchRef.current.add(toolData.id);
+        const savedLine = toolData.newContent
+          ?.split('\n')
+          .find(line => line.startsWith('Saved:'))
+          ?.replace('Saved:', '')
+          .trim();
+        const targetPath = savedLine || toolData.targetPath || toolData.description || 'research note';
+        const conclusionFromContent = toolData.newContent
+          ?.split('\n')
+          .find(line => line.startsWith('Conclusion:'))
+          ?.replace('Conclusion:', '')
+          .trim() || 'Research completed.';
+        assistantRef.current.notifyResearchComplete(targetPath, conclusionFromContent);
+      }
+    }
+
     setTranscripts(prev => {
       // Check if this is an update to an existing tool execution
       if (toolData?.id) {
@@ -626,7 +646,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       return [...prev, { id: uniqueId, role: 'system', text, isComplete: true, toolData, timestamp: Date.now(), topicId: currentTopicIdRef.current }];
     });
     setFileCount(listDirectory().length);
-  }, []);
+  }, [status]);
 
   const handleImageDownload = useCallback(async (image: ImageSearchResult, index: number) => {
     try {

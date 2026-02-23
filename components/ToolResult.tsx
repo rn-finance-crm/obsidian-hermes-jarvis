@@ -451,6 +451,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
       case 'search_and_replace_regex_global': return 'GLOBAL';
       case 'internet_search': return 'WEB';
       case 'image_search': return 'IMAGE';
+      case 'start_research': return 'RESEARCH';
       case 'delete_file': return 'DELETE';
       default: return 'ACTION';
     }
@@ -506,7 +507,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
           
           {isPending && (
             <div className="flex items-center space-x-1 px-2 shrink-0 ml-auto">
-              {toolData.name === 'internet_search' || toolData.name === 'image_search' ? (
+              {toolData.name === 'internet_search' || toolData.name === 'image_search' || toolData.name === 'start_research' ? (
                 <div className="loading-dots-container">
                   <div className="loading-dot"></div>
                   <div className="loading-dot"></div>

@@ -21,6 +21,7 @@ import * as image_search from '../tools/image_search';
 import * as getUserVaultContext from '../tools/getUserVaultContext';
 import * as save_memory from '../tools/save_memory';
 import * as delete_memory from '../tools/delete_memory';
+import * as start_research from '../tools/start_research';
 
 const toolInstructions = [
   list_directory.instruction,
@@ -44,14 +45,15 @@ const toolInstructions = [
   end_conversation.instruction,
   getUserVaultContext.instruction,
   save_memory.instruction,
-  delete_memory.instruction
+  delete_memory.instruction,
+  start_research.instruction
 ].join('\n\n');
 
 export const DEFAULT_SYSTEM_INSTRUCTION = `You are an advanced voice assistant (Hermes) with file system access and internet capabilities.
 Vault structure: Flat markdown files.
 
 CORE RESPONSE RULES:
-1. NO CONFIRMATIONS: Do NOT say "Done.", "Finished.", or any variation of completion confirmation after a tool call. The UI handles state visualization.
+1. NO CONFIRMATIONS: Do NOT say "Done.", "Finished.", or any variation of completion confirmation after a tool call. The UI handles state visualization. Exception: after calling start_research, respond exactly: "research started, will get back when the results are in."
 2. INFORMATIONAL TOOLS: When calling "read_file", "list_directory", "list_vault_files", "internet_search", or "web_fetch", remain silent unless the user asked a specific question about the content.
 3. BATCH ACTIONS: If performing multiple modifications, wait until all are finished, then provide a single concise summary.
 4. NO "DONE" ON TOPICS: Do not say "Done" or confirm when switching topics. Just proceed with the new context.

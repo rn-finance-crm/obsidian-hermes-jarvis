@@ -534,6 +534,27 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
     }
   }
 
+  notifyResearchComplete(link: string, summary: string): void {
+    if (!this.session || !this.isSessionReady) return;
+
+    const safeLink = link.trim() || 'the research note';
+    const safeSummary = summary.trim() || 'Research finished successfully.';
+    const prompt = [
+      'System event: a background research task has completed.',
+      `Please give a short spoken update to the user that the research is done, where it was saved (${safeLink}), and one-sentence conclusion: ${safeSummary}`,
+      'Keep it concise and natural.'
+    ].join(' ');
+
+    try {
+      this.session.sendClientContent({
+        turns: [{ role: 'user', parts: [{ text: prompt }] }],
+        turnComplete: true
+      });
+    } catch (error) {
+      console.error('Failed to send research completion notification:', getErrorMessage(error));
+    }
+  }
+
   handleVisibilityChange(isVisible: boolean): void {
     if (isVisible && this.pendingReconnect) {
       void this.attemptReconnect();

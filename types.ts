@@ -140,6 +140,17 @@ export interface UsageMetadata {
   totalTokenCount?: number;
 }
 
+export interface DeepResearchInProgressItem {
+  interactionId: string;
+  query: string;
+  shortName: string;
+  longName: string;
+  fullPath: string;
+  agent: string;
+  startedAt: string;
+  toolCallId?: string;
+}
+
 export interface AppSettings {
   voiceName: string;
   customContext: string;

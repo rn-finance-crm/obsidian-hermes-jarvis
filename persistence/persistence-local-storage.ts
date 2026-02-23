@@ -1,13 +1,15 @@
-import type { AppSettings, ArchivedConversation } from '../types';
+import type { AppSettings, ArchivedConversation, DeepResearchInProgressItem } from '../types';
 
 const FILES_KEY = 'hermes_os_filesystem';
 const SETTINGS_KEY = 'hermes_os_settings';
 const CHAT_HISTORY_KEY = 'hermes_os_chat_history';
 const ARCHIVED_CONVERSATIONS_KEY = 'hermes_os_archived_conversations';
+const DEEP_RESEARCH_IN_PROGRESS_KEY = 'hermes_os_deep_research_in_progress';
 
 const memoryStore = new Map<string, string>();
 let cachedSettings: AppSettings | null = null;
 let cachedConversations: ArchivedConversation[] | null = null;
+let cachedDeepResearchInProgress: DeepResearchInProgressItem[] | null = null;
 
 export const saveFiles = (files: Record<string, string>): Promise<void> => {
   memoryStore.set(FILES_KEY, JSON.stringify(files));
@@ -125,4 +127,44 @@ export const deleteArchivedConversation = async (key: string): Promise<void> => 
   const existing = await loadArchivedConversations();
   const updated = existing.filter(conv => conv.key !== key);
   await saveArchivedConversations(updated);
+};
+
+export const saveDeepResearchInProgress = (items: DeepResearchInProgressItem[]): Promise<void> => {
+  try {
+    cachedDeepResearchInProgress = items;
+    memoryStore.set(DEEP_RESEARCH_IN_PROGRESS_KEY, JSON.stringify(items));
+  } catch (error) {
+    console.error('Failed to save deep research in-progress items', error);
+  }
+  return Promise.resolve();
+};
+
+export const loadDeepResearchInProgress = (): Promise<DeepResearchInProgressItem[]> => {
+  if (cachedDeepResearchInProgress) {
+    return Promise.resolve(cachedDeepResearchInProgress);
+  }
+
+  const data = memoryStore.get(DEEP_RESEARCH_IN_PROGRESS_KEY);
+  if (!data) return Promise.resolve([]);
+
+  try {
+    cachedDeepResearchInProgress = JSON.parse(data) as DeepResearchInProgressItem[];
+    return Promise.resolve(cachedDeepResearchInProgress);
+  } catch (error) {
+    console.error('Failed to load deep research in-progress items', error);
+    return Promise.resolve([]);
+  }
+};
+
+export const addDeepResearchInProgress = async (item: DeepResearchInProgressItem): Promise<void> => {
+  const existing = await loadDeepResearchInProgress();
+  const updated = existing.filter(entry => entry.interactionId !== item.interactionId);
+  updated.push(item);
+  await saveDeepResearchInProgress(updated);
+};
+
+export const removeDeepResearchInProgress = async (interactionId: string): Promise<void> => {
+  const existing = await loadDeepResearchInProgress();
+  const updated = existing.filter(entry => entry.interactionId !== interactionId);
+  await saveDeepResearchInProgress(updated);
 };
