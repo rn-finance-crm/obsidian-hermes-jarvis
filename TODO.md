@@ -1,12 +1,14 @@
 # BUGZ
-- on mobile, when pasting the API key, onchange does not fire, and we do not get to the chat.
+
 - when pressing the "Start convesation" through the quick launch, it start even if the state is on. 
+- sometimes it starts two voice convo on error.
 
 tools:
     - search still lists Registry, make that better
 
 # Mobile
 - on mobile when focus is not on, it drops connection.
+    - sadly, this can't be fixed. Need a standalone app.
 
 
 # TELEMETRY
