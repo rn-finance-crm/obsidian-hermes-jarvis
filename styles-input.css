@@ -41,7 +41,8 @@
   .hermes-text-muted { color: var(--hermes-text-muted); }
   .hermes-text-faint { color: var(--hermes-text-faint); }
   .hermes-text-accent { color: var(--hermes-text-accent); }
-  
+  .hermes-link-internal { color: var(--hermes-link-internal); }
+
   /* Status utilities */
   .hermes-success { color: #10b981; }
   .hermes-success-bg { background-color: #10b981; }
@@ -108,6 +109,9 @@
   --hermes-text-faint: var(--text-faint, #666666);
   --hermes-text-accent: var(--text-accent, #7c3aed);
   
+  /* Link colors */
+  --hermes-link-internal: var(--link-color, #c084fc);
+
   /* Brand color */
   --hermes-brand: #6366f1;
   

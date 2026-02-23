@@ -19,12 +19,30 @@ type Token = {
   items?: Array<{ tokens: Token[] }>;
 };
 
+/**
+ * Convert Obsidian wiki-links to standard markdown links before parsing.
+ * Handles: [[filename]], [[filename|display text]], ![[image.png]], ![[image.png|alt]]
+ */
+function convertWikiLinks(text: string): string {
+  // Image embeds: ![[path|alt]] or ![[path]]
+  // Angle brackets <> around path allow spaces in URLs per markdown spec
+  text = text.replace(/!\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (_match, path: string, alt?: string) => {
+    const display = alt || path;
+    return `![${display}](<${path}>)`;
+  });
+  // Wiki-links: [[path|display]] or [[path]]
+  text = text.replace(/\[\[([^\]|]+?)(?:\|([^\]]*))?\]\]/g, (_match, path: string, display?: string) => {
+    return `[${display || path}](<${path}>)`;
+  });
+  return text;
+}
+
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
   // Parse the markdown content and extract links
   const processedContent = React.useMemo(() => {
     if (!content) return [];
 
-    const tokens = marked.lexer(content);
+    const tokens = marked.lexer(convertWikiLinks(content));
 
     const processTokens = (tokensToProcess: Token[], keyPrefix: string = '0'): React.ReactNode[] => {
       const result: React.ReactNode[] = [];
@@ -42,7 +60,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
             break;
           }
           case 'text': {
-            result.push(<React.Fragment key={key}>{token.text}</React.Fragment>);
+            // text tokens can contain inline children (links, bold, etc.) — recurse into them
+            if (token.tokens && token.tokens.length > 0) {
+              result.push(<React.Fragment key={key}>{processTokens(token.tokens, key)}</React.Fragment>);
+            } else {
+              result.push(<React.Fragment key={key}>{token.text}</React.Fragment>);
+            }
             break;
           }
           case 'link': {
@@ -144,6 +167,21 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className 
               <li key={key} className="mb-1">
                 {processTokens(token.tokens || [], key)}
               </li>
+            );
+            break;
+          }
+          case 'image': {
+            const src = token.href || '';
+            const alt = token.text || '';
+            const isVaultImage = src && !src.startsWith('http') && !src.startsWith('data:');
+            result.push(
+              isVaultImage ? (
+                <DocumentLink key={key} href={src}>
+                  {alt || src}
+                </DocumentLink>
+              ) : (
+                <img key={key} src={src} alt={alt} className="max-w-full rounded my-2" />
+              )
             );
             break;
           }
