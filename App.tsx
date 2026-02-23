@@ -70,6 +70,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [currentFolder, setCurrentFolder] = useState<string>(() => saved.currentFolder || '/');
   const [currentNote, setCurrentNote] = useState<string | null>(() => saved.currentNote || null);
   const [totalTokens, setTotalTokens] = useState<number>(() => saved.totalTokens || 0);
+  const [muted, setMuted] = useState<boolean>(() => saved.muted || false);
   const [usage, setUsage] = useState<UsageMetadata>({ totalTokenCount: saved.totalTokens || 0 });
   const [fileCount, setFileCount] = useState<number>(0);
   const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
@@ -378,9 +379,10 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       serperApiKey,
       currentFolder,
       currentNote,
-      totalTokens
+      totalTokens,
+      muted
     });
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens]);
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, muted]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -401,12 +403,13 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
           setCustomContext(prev => reloadedSettings.customContext !== undefined ? reloadedSettings.customContext : prev);
           setSystemInstruction(prev => reloadedSettings.systemInstruction !== undefined ? reloadedSettings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION : prev);
           setSerperApiKey(prev => reloadedSettings.serperApiKey !== undefined ? reloadedSettings.serperApiKey : prev);
-          
+          if (reloadedSettings.muted !== undefined) setMuted(reloadedSettings.muted);
+
           // Only update manual API key if current one is empty and reloaded one has value
           if (!manualApiKey.trim() && reloadedSettings.manualApiKey?.trim()) {
             setManualApiKey(reloadedSettings.manualApiKey);
           }
-          
+
           // Check if API key was added
           const activeKey = (manualApiKey || '').trim();
           if (activeKey && showApiKeySetup) {
@@ -425,12 +428,13 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setCustomContext(prev => settings.customContext !== undefined ? settings.customContext : prev);
       setSystemInstruction(prev => settings.systemInstruction !== undefined ? settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION : prev);
       setSerperApiKey(prev => settings.serperApiKey !== undefined ? settings.serperApiKey : prev);
-      
+      if (settings.muted !== undefined) setMuted(settings.muted);
+
       // Only update manual API key if current one is empty and new one has value
       if (!manualApiKey.trim() && settings.manualApiKey?.trim()) {
         setManualApiKey(settings.manualApiKey);
       }
-      
+
       // Check if API key was added
       const activeKey = (settings.manualApiKey || '').trim();
       if (activeKey && showApiKeySetup) {
@@ -466,6 +470,13 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     stopSession,
     toggleSession
   }));
+
+  // Apply muted state to active voice session
+  useEffect(() => {
+    if (assistantRef.current) {
+      assistantRef.current.setMuted(muted);
+    }
+  }, [muted]);
 
   // Cleanup voice session on component unmount
   useEffect(() => {
@@ -756,8 +767,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       
       assistantRef.current = new GeminiVoiceAssistant(assistantCallbacks);
       await assistantRef.current.start(
-        activeKey, 
-        { voiceName, customContext, systemInstruction, chatHistoryFolder }, 
+        activeKey,
+        { voiceName, customContext, systemInstruction, chatHistoryFolder, muted },
         { folder: currentFolder, note: currentNote },
         conversationHistory
       );
@@ -874,10 +885,10 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         <ApiKeySetup />
       ) : (
         <>
-          <Settings 
-            isOpen={settingsOpen} 
-            onClose={() => setSettingsOpen(false)} 
-            voiceName={voiceName} 
+          <Settings
+            isOpen={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            voiceName={voiceName}
             setVoiceName={setVoiceName}
             customContext={customContext}
             setCustomContext={setCustomContext}
@@ -887,6 +898,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             setManualApiKey={setManualApiKey}
             serperApiKey={serperApiKey}
             setSerperApiKey={setSerperApiKey}
+            muted={muted}
+            setMuted={setMuted}
             onUpdateApiKey={() => (window as { aistudio?: { openSelectKey?: () => void } }).aistudio?.openSelectKey()}
           />
           

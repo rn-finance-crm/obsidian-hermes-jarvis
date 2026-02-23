@@ -137,6 +137,7 @@ export interface AppSettings {
   totalTokens?: number;
   chatHistory?: string[];
   webSearchProvider?: 'google' | 'serper' | 'perplexity';
+  muted?: boolean;
 }
 
 export interface VoiceAssistantCallbacks {
@@ -201,4 +202,5 @@ declare global {
 export interface VoiceAssistant {
   start: (apiKey: string, config: AppSettings, initialState?: { folder: string; note: string | null }, conversationHistory?: string) => Promise<void>;
   stop: () => void;
+  setMuted: (muted: boolean) => void;
 }

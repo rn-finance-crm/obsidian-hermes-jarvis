@@ -38,6 +38,7 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
   private sessionPromise: Promise<LiveSession> | null = null;
   private inputAudioContext: AudioContext | null = null;
   private outputAudioContext: AudioContext | null = null;
+  private outputGainNode: GainNode | null = null;
   private nextStartTime: number = 0;
   private sources: Set<AudioBufferSourceNode> = new Set();
   private inputWorkletNode: AudioWorkletNode | null = null;
@@ -130,6 +131,9 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
       }
       this.inputAudioContext = new AudioContextClass({ sampleRate: 16000 });
       this.outputAudioContext = new AudioContextClass({ sampleRate: 24000 });
+      this.outputGainNode = this.outputAudioContext.createGain();
+      this.outputGainNode.gain.value = settings.muted ? 0 : 1;
+      this.outputGainNode.connect(this.outputAudioContext.destination);
       this.nextStartTime = 0;
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -587,7 +591,7 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
       
       const source = this.outputAudioContext.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(this.outputAudioContext.destination);
+      source.connect(this.outputGainNode || this.outputAudioContext.destination);
       source.onended = () => this.sources.delete(source);
       
       source.start(this.nextStartTime);
@@ -606,6 +610,12 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
       this.sources.clear();
       this.nextStartTime = 0;
       this.callbacks.onInterrupted();
+    }
+  }
+
+  setMuted(muted: boolean): void {
+    if (this.outputGainNode) {
+      this.outputGainNode.gain.value = muted ? 0 : 1;
     }
   }
 
@@ -736,6 +746,7 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
     if (this.outputAudioContext) {
       void this.outputAudioContext.close();
       this.outputAudioContext = null;
+      this.outputGainNode = null;
     }
     
     this.sources.forEach(source => {

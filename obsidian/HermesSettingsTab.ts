@@ -16,6 +16,7 @@ export interface HermesSettings {
   perplexityApiKey?: string;
   chatHistoryFolder: string;
   webSearchProvider: 'google' | 'serper' | 'perplexity';
+  muted: boolean;
 }
 
 export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
@@ -27,6 +28,7 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   perplexityApiKey: '',
   chatHistoryFolder: 'hermes',
   webSearchProvider: 'serper',
+  muted: false,
 };
 
 export class HermesSettingsTab extends PluginSettingTab {
@@ -66,6 +68,21 @@ export class HermesSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             if (this.plugin.settings) {
               this.plugin.settings.voiceName = value;
+              await saveAppSettings(this.plugin.settings);
+            }
+          });
+      });
+
+    // Mute toggle
+    new Setting(containerEl)
+      .setName('Mute voice output')
+      .setDesc('Only show text responses, do not read them out loud')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings?.muted || false)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.muted = value;
               await saveAppSettings(this.plugin.settings);
             }
           });

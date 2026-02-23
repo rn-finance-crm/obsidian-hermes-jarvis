@@ -16,6 +16,8 @@ interface SettingsProps {
   setManualApiKey: (k: string) => void;
   serperApiKey: string;
   setSerperApiKey: (key: string) => void;
+  muted: boolean;
+  setMuted: (m: boolean) => void;
   onUpdateApiKey: () => void;
 }
 
@@ -32,6 +34,8 @@ const Settings: React.FC<SettingsProps> = ({
   setManualApiKey,
   serperApiKey,
   setSerperApiKey,
+  muted,
+  setMuted,
   onUpdateApiKey
 }) => {
   if (!isOpen) return null;
@@ -65,6 +69,19 @@ const Settings: React.FC<SettingsProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium hermes-text-normal block">Mute voice output</label>
+              <button
+                onClick={() => setMuted(!muted)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${muted ? 'hermes-interactive-bg' : 'hermes-bg-tertiary hermes-border/20 border'}`}
+              >
+                <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${muted ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+            <p className="text-xs hermes-text-faint">Only show text responses, do not read them out loud</p>
           </div>
 
           <div className="space-y-4">
