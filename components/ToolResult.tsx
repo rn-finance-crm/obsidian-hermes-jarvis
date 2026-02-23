@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ToolData, FileDiff, SearchResult, SearchMatch, ImageSearchResult, DownloadedImage, DirectoryInfoItem, SemanticSearchResult } from '../types';
+import { ToolData, FileDiff, SearchResult, SearchMatch, ImageSearchResult, DownloadedImage, DirectoryInfoItem, SemanticSearchResult, TagSearchResult } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 import { COMMAND_DECLARATIONS } from '../services/commands';
 import { openFileInObsidian } from '../utils/environment';
@@ -12,9 +12,15 @@ interface ToolResultProps {
 }
 
 // SearchResultsView component for displaying search results in a dropdown
-const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: string, pattern?: string }> = ({ searchResults, keyword, pattern }) => {
+const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: string, pattern?: string, tagResults?: TagSearchResult[] }> = ({ searchResults, keyword, pattern, tagResults }) => {
   const getSearchTerm = () => keyword || pattern || '';
-  
+
+  // Build a map of filename -> matched tags for badge display
+  const tagMap = useMemo(() => {
+    if (!tagResults || tagResults.length === 0) return new Map<string, string[]>();
+    return new Map(tagResults.map(t => [t.filename, t.tags]));
+  }, [tagResults]);
+
   const handleFileClick = async (filename: string, _lineNumber?: number) => {
     try {
       await openFileInObsidian(filename);
@@ -22,7 +28,7 @@ const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: str
       console.error('Failed to open file:', error);
     }
   };
-  
+
   return (
     <div className="p-4 space-y-3">
       <div className="pb-3 hermes-border-b mb-3">
@@ -36,7 +42,7 @@ const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: str
       <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto">
         {searchResults.map((result, resultIndex) => (
           <div key={resultIndex} className="space-y-1">
-            <div 
+            <div
               className="flex items-center space-x-3 p-3 rounded-xl hermes-bg-secondary/5 hermes-border/5 hermes-hover:bg-secondary/10 hermes-hover:border/10 transition-all group cursor-pointer"
               onClick={() => handleFileClick(result.filename)}
             >
@@ -49,18 +55,31 @@ const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: str
                 <span className="text-xs font-bold hermes-text-normal group-hover:hermes-text-accent transition-colors truncate">
                   {result.filename}
                 </span>
-                <span className="text-[9px] hermes-text-muted truncate font-mono">
-                  {result.matches.length} match{result.matches.length !== 1 ? 'es' : ''}
-                </span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[9px] hermes-text-muted truncate font-mono">
+                    {result.matches.length} match{result.matches.length !== 1 ? 'es' : ''}
+                  </span>
+                  {tagMap.get(result.filename)?.map((tag, i) => (
+                    <span key={i} className="text-[8px] font-medium px-1.5 py-0.5 rounded hermes-success-bg/15 hermes-success">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="text-[9px] font-medium px-2 py-1 rounded hermes-info-bg/10 hermes-info">
-                #{resultIndex + 1}
-              </div>
+              {result.score != null ? (
+                <div className="text-[9px] font-medium px-2 py-1 rounded hermes-interactive-bg/10 hermes-text-accent" title="BM25 relevance score">
+                  {result.score.toFixed(1)}
+                </div>
+              ) : (
+                <div className="text-[9px] font-medium px-2 py-1 rounded hermes-info-bg/10 hermes-info">
+                  #{resultIndex + 1}
+                </div>
+              )}
             </div>
-            
+
             {/* Show first few matches as previews */}
             {result.matches.slice(0, 3).map((match: SearchMatch, matchIndex: number) => (
-              <div 
+              <div
                 key={matchIndex}
                 className="ml-8 flex items-start space-x-2 p-2 rounded-lg hermes-bg-secondary/5 cursor-pointer hermes-hover:bg-secondary/10 transition-all"
                 onClick={() => handleFileClick(result.filename)}
@@ -73,7 +92,7 @@ const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: str
                 </span>
               </div>
             ))}
-            
+
             {result.matches.length > 3 && (
               <div className="ml-8 text-[8px] hermes-text-muted italic">
                 ... and {result.matches.length - 3} more match{result.matches.length - 3 !== 1 ? 'es' : ''}
@@ -372,7 +391,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
     }
     
     // Add search keyword if it's a search tool
-    if (toolData.name === 'search_keyword' && toolData.searchKeyword) {
+    if (toolData.name === 'search_vault' && toolData.searchKeyword) {
       details.push(`"${toolData.searchKeyword}"`);
     }
     
@@ -414,7 +433,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
       case 'list_directory': return 'SCAN';
       case 'dirlist': return 'DIRS';
       case 'get_folder_tree': return 'TREE';
-      case 'search_keyword': return 'SEARCH';
+      case 'search_vault': return 'SEARCH';
       case 'search_regexp': return 'GREP';
       case 'search_and_replace_regex_in_file': return 'REPLACE';
       case 'search_and_replace_regex_global': return 'GLOBAL';
@@ -453,7 +472,7 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
           <span className="text-[11px] font-mono hermes-text-normal truncate">
              {toolData.name === 'internet_search' ? `Searching: ${toolData.filename}` : 
               toolData.name === 'image_search' ? `Images: ${toolData.filename}` : 
-              toolData.name === 'search_keyword' && toolData.searchKeyword ? `Searching for "${toolData.searchKeyword}"` :
+              toolData.name === 'search_vault' && toolData.searchKeyword ? `Searching for "${toolData.searchKeyword}"` :
               toolData.name === 'search_regexp' && toolData.filename ? `Regex: ${toolData.filename}` :
               `${toolData.filename}`}
           </span>
@@ -626,22 +645,23 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
             </div>
           )}
 
-          {(toolData.name === 'search_keyword' || toolData.name === 'search_regexp') && toolData.searchResults && (
+          {(toolData.name === 'search_vault' || toolData.name === 'search_regexp') && toolData.searchResults && (
             <SearchResultsView
               searchResults={toolData.searchResults}
               keyword={toolData.searchKeyword}
               pattern={toolData.filename}
+              tagResults={toolData.tagResults}
             />
           )}
 
-          {toolData.name === 'search_keyword' && toolData.semanticResults && toolData.semanticResults.length > 0 && (
+          {toolData.name === 'search_vault' && toolData.semanticResults && toolData.semanticResults.length > 0 && (
             <SemanticResultsView
               semanticResults={toolData.semanticResults}
               keyword={toolData.searchKeyword}
             />
           )}
 
-          {!['read_file', 'create_file', 'internet_search', 'image_search', 'list_directory', 'move_file', 'rename_file', 'search_keyword', 'search_regexp'].includes(toolData.name) && toolData.newContent !== undefined && toolData.oldContent !== undefined && (
+          {!['read_file', 'create_file', 'internet_search', 'image_search', 'list_directory', 'move_file', 'rename_file', 'search_vault', 'search_regexp'].includes(toolData.name) && toolData.newContent !== undefined && toolData.oldContent !== undefined && (
             <DiffView diff={{ filename: toolData.filename, oldContent: toolData.oldContent, newContent: toolData.newContent }} />
           )}
 

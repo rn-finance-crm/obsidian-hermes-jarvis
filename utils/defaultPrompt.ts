@@ -9,7 +9,7 @@ import * as update_file from '../tools/update_file';
 import * as edit_file from '../tools/edit_file';
 import * as rename_file from '../tools/rename_file';
 import * as move_file from '../tools/move_file';
-import * as search_keyword from '../tools/search_keyword';
+import * as search_vault from '../tools/search_vault';
 import * as search_regexp from '../tools/search_regexp';
 import * as search_replace_file from '../tools/search_replace_file';
 import * as search_replace_global from '../tools/search_replace_global';
@@ -32,7 +32,7 @@ const toolInstructions = [
   edit_file.instruction,
   rename_file.instruction,
   move_file.instruction,
-  search_keyword.instruction,
+  search_vault.instruction,
   search_regexp.instruction,
   search_replace_file.instruction,
   search_replace_global.instruction,

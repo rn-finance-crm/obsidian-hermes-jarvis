@@ -26,6 +26,12 @@ export interface SearchMatch {
 export interface SearchResult {
   filename: string;
   matches: SearchMatch[];
+  score?: number;
+}
+
+export interface TagSearchResult {
+  filename: string;
+  tags: string[];
 }
 
 export interface SemanticSearchResult {
@@ -62,6 +68,7 @@ export interface ToolData {
   searchResults?: SearchResult[] | ImageSearchResult[]; // Can be either SearchResult[] or image search results
   searchKeyword?: string;
   semanticResults?: SemanticSearchResult[];
+  tagResults?: TagSearchResult[];
   multiDiffs?: FileDiff[];
   groundingChunks?: GroundingChunk[];
   truncated?: boolean;

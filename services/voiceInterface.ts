@@ -418,7 +418,7 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
           'dirlist': 'Directory Structure',
           'get_folder_tree': 'Folder Tree',
           'read_file': 'File Reading',
-          'search_keyword': 'Keyword Search',
+          'search_vault': 'Vault Search',
           'search_regexp': 'Pattern Search',
           'search_replace_file': 'File Search & Replace',
           'search_replace_global': 'Global Search & Replace',

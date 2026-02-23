@@ -236,7 +236,7 @@ const specialCases: Record<string, string> = {
   'list_directory': 'SCAN',
   'dirlist': 'DIRS',
   'get_folder_tree': 'TREE',
-  'search_keyword': 'SEARCH',
+  'search_vault': 'SEARCH',
   'search_regexp': 'GREP',
   'search_and_replace_regex_in_file': 'REPLACE',
   'search_and_replace_regex_global': 'GLOBAL',
@@ -694,7 +694,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
             >
               {toolData?.name === 'internet_search' && toolData?.filename ? 
                 `Searching: ${toolData.filename}` : 
-                toolData?.name === 'search_keyword' && toolData?.searchKeyword ? 
+                toolData?.name === 'search_vault' && toolData?.searchKeyword ? 
                 `Searching for "${toolData.searchKeyword}"` :
                 toolData?.name === 'search_regexp' && toolData?.filename ? 
                 `Regex: ${toolData.filename}` :
@@ -874,7 +874,7 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
             <div className="p-2">
               <WebSearchView content={toolData.newContent || ''} chunks={toolData.groundingChunks || []} />
             </div>
-          ) : (toolData?.name === 'search_keyword' || toolData?.name === 'search_regexp') && toolData?.searchResults ? (
+          ) : (toolData?.name === 'search_vault' || toolData?.name === 'search_regexp') && toolData?.searchResults ? (
             <SearchResultsView 
               searchResults={toolData.searchResults} 
               keyword={toolData.searchKeyword}

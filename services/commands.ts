@@ -9,7 +9,7 @@ import * as update_file from '../tools/update_file';
 import * as edit_file from '../tools/edit_file';
 import * as rename_file from '../tools/rename_file';
 import * as move_file from '../tools/move_file';
-import * as search_keyword from '../tools/search_keyword';
+import * as search_vault from '../tools/search_vault';
 import * as search_regexp from '../tools/search_regexp';
 import * as search_replace_file from '../tools/search_replace_file';
 import * as search_replace_global from '../tools/search_replace_global';
@@ -68,7 +68,7 @@ const TOOLS: Record<string, ToolModule> = {
   edit_file,
   rename_file,
   move_file,
-  search_keyword,
+  search_vault,
   search_regexp,
   search_and_replace_regex_in_file: search_replace_file,
   search_and_replace_regex_global: search_replace_global,
@@ -181,7 +181,7 @@ function truncateLargeResult(toolName: string, result: unknown, callbacks: ToolC
       const currentPage = 1;
       
       // Create truncation notice for AI
-      const truncationNotice = `\n\n=== RESULT TRUNCATED ===\nShowing ${MAX_ITEMS} of ${totalFiles} items (Page ${currentPage} of ${totalPages}).\n\nTo see more results, consider:\n- Using list_vault_files with pagination (limit/offset parameters)\n- Using search_keyword or search_regexp for targeted searches\n- Using get_folder_tree for folder structure only\n- Adding a filter parameter to narrow results\n\nCurrent results show first ${MAX_ITEMS} items only.`;
+      const truncationNotice = `\n\n=== RESULT TRUNCATED ===\nShowing ${MAX_ITEMS} of ${totalFiles} items (Page ${currentPage} of ${totalPages}).\n\nTo see more results, consider:\n- Using list_vault_files with pagination (limit/offset parameters)\n- Using search_vault or search_regexp for targeted searches\n- Using get_folder_tree for folder structure only\n- Adding a filter parameter to narrow results\n\nCurrent results show first ${MAX_ITEMS} items only.`;
       
       // Log truncation info
       console.debug(`Tool result truncated: ${toolName}, ${MAX_ITEMS}/${totalFiles} items, page ${currentPage}/${totalPages}`);
@@ -220,7 +220,7 @@ function truncateLargeResult(toolName: string, result: unknown, callbacks: ToolC
       const totalPages = Math.ceil(totalFolders / MAX_ITEMS);
       const currentPage = 1;
       
-      const truncationNotice = `\n\n=== RESULT TRUNCATED ===\nShowing ${MAX_ITEMS} of ${totalFolders} folders (Page ${currentPage} of ${totalPages}).\n\nFor large folder structures, consider:\n- Using search_keyword to find specific folders\n- Using list_vault_files with filter parameter\n- Asking for a specific subfolder path\n\nCurrent results show first ${MAX_ITEMS} folders only.`;
+      const truncationNotice = `\n\n=== RESULT TRUNCATED ===\nShowing ${MAX_ITEMS} of ${totalFolders} folders (Page ${currentPage} of ${totalPages}).\n\nFor large folder structures, consider:\n- Using search_vault to find specific folders\n- Using list_vault_files with filter parameter\n- Asking for a specific subfolder path\n\nCurrent results show first ${MAX_ITEMS} folders only.`;
       
       console.debug(`Folder structure truncated: ${toolName}, ${MAX_ITEMS}/${totalFolders} folders, page ${currentPage}/${totalPages}`);
       
@@ -276,7 +276,7 @@ function truncateLargeResult(toolName: string, result: unknown, callbacks: ToolC
       const totalPages = Math.ceil(totalDirectories / MAX_ITEMS);
       const currentPage = 1;
       
-      const truncationNotice = `\n\n=== DIRECTORY LIST TRUNCATED ===\nShowing ${MAX_ITEMS} of ${totalDirectories} directories (Page ${currentPage} of ${totalPages}).\n\nFor large directory structures, consider:\n- Using search_keyword to find specific directories\n- Using list_vault_files with filter parameter\n- Asking for a specific directory path\n- Using get_folder_tree for a simple folder list\n\nCurrent results show first ${MAX_ITEMS} directories only.`;
+      const truncationNotice = `\n\n=== DIRECTORY LIST TRUNCATED ===\nShowing ${MAX_ITEMS} of ${totalDirectories} directories (Page ${currentPage} of ${totalPages}).\n\nFor large directory structures, consider:\n- Using search_vault to find specific directories\n- Using list_vault_files with filter parameter\n- Asking for a specific directory path\n- Using get_folder_tree for a simple folder list\n\nCurrent results show first ${MAX_ITEMS} directories only.`;
       
       console.debug(`Directory list truncated: ${toolName}, ${MAX_ITEMS}/${totalDirectories} directories, page ${currentPage}/${totalPages}`);
       
