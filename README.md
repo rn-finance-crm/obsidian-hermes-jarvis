@@ -83,7 +83,7 @@ Until then, the world is going by.
 - **Smart Tool Calling**:
   - `read_file` / `create_file` / `update_file`: Full file lifecycle management
   - `edit_file`: Targeted line-based modifications
-  - `search_keyword` / `search_regexp`: Global vault searching
+  - `search_vault` / `search_regexp`: Global vault searching (BM25, semantic, tag)
   - `internet_search`: Real-time web grounding via Google Search
   - `generate_image_from_context`: AI-powered image generation
   - `topic_switch`: Automatic conversation archiving
@@ -164,7 +164,7 @@ The plugin includes 20+ tools for vault operations:
 - `create_directory`: Create new directories
 
 **Search & Replace:**
-- `search_keyword`: Search for text patterns
+- `search_vault`: BM25 ranked search with semantic and tag filtering
 - `search_regexp`: Regex-based search
 - `search_replace_file`: Search and replace in single file
 - `search_replace_global`: Global search and replace

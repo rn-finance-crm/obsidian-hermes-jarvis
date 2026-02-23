@@ -92,8 +92,8 @@ const TOOLS: Record<string, ToolModule> = {
 export const COMMAND_DECLARATIONS = Object.values(TOOLS).map(t => t.declaration);
 
 export const executeCommand = async (
-  name: string, 
-  args: ToolArgs, 
+  name: string,
+  args: ToolArgs,
   callbacks: ToolCallbacks,
   existingToolCallId?: string,
   currentFolder?: string
