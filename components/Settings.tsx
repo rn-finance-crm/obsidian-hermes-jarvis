@@ -16,6 +16,8 @@ interface SettingsProps {
   setManualApiKey: (k: string) => void;
   serperApiKey: string;
   setSerperApiKey: (key: string) => void;
+  serpApiKey: string;
+  setSerpApiKey: (key: string) => void;
   muted: boolean;
   setMuted: (m: boolean) => void;
   onUpdateApiKey: () => void;
@@ -34,6 +36,8 @@ const Settings: React.FC<SettingsProps> = ({
   setManualApiKey,
   serperApiKey,
   setSerperApiKey,
+  serpApiKey,
+  setSerpApiKey,
   muted,
   setMuted,
   onUpdateApiKey
@@ -132,6 +136,20 @@ const Settings: React.FC<SettingsProps> = ({
                 />
                 <p className="text-xs hermes-text-faint">
                   Get 2,500 free credits at <a href="https://serper.dev/" target="_blank" rel="noreferrer" className="hermes-text-accent hover:underline">serper.dev</a>
+                </p>
+              </div>
+
+              <div className="flex flex-col space-y-2">
+                <span className="text-sm font-medium hermes-text-muted">SerpApi API Key (for Web Search)</span>
+                <input
+                  type="password"
+                  value={serpApiKey}
+                  onChange={(e) => setSerpApiKey(e.target.value)}
+                  placeholder="Enter your SerpApi key..."
+                  className="w-full hermes-bg-tertiary hermes-border/10 rounded-lg px-4 py-3 text-sm hermes-text-normal font-mono outline-none hermes-focus:border/50 transition-all"
+                />
+                <p className="text-xs hermes-text-faint">
+                  Register at <a href="https://serpapi.com/users/sign_up" target="_blank" rel="noreferrer" className="hermes-text-accent hover:underline">serpapi.com</a>
                 </p>
               </div>
 

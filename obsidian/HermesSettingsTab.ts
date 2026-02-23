@@ -13,9 +13,10 @@ export interface HermesSettings {
   systemInstruction: string;
   manualApiKey: string;
   serperApiKey: string;
+  serpApiKey: string;
   perplexityApiKey?: string;
   chatHistoryFolder: string;
-  webSearchProvider: 'google' | 'serper' | 'perplexity';
+  webSearchProvider: 'google' | 'serper' | 'serpapi' | 'perplexity';
   muted: boolean;
 }
 
@@ -25,6 +26,7 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   systemInstruction: '',
   manualApiKey: '',
   serperApiKey: '',
+  serpApiKey: '',
   perplexityApiKey: '',
   chatHistoryFolder: 'hermes',
   webSearchProvider: 'serper',
@@ -206,6 +208,32 @@ export class HermesSettingsTab extends PluginSettingTab {
         text.inputEl.type = 'password';
       });
 
+    const serpApiFragment = document.createDocumentFragment();
+    serpApiFragment.createSpan({ text: currentProvider === 'serpapi'
+      ? 'Required for SerpApi web search. Sign up at '
+      : 'Optional SerpApi key. If set, internet_search prefers SerpApi by default. Sign up at ' });
+    const serpApiLink = serpApiFragment.createEl('a', {
+      href: 'https://serpapi.com/users/sign_up',
+      text: 'SerpApi',
+    });
+    serpApiLink.setAttr('target', '_blank');
+
+    const serpApiSetting = new Setting(containerEl)
+      .setName('SerpApi API key')
+      .setDesc(serpApiFragment)
+      .addText((text) => {
+        text
+          .setPlaceholder('Enter your SerpApi key')
+          .setValue(this.plugin.settings?.serpApiKey || '')
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.serpApiKey = value;
+              await saveAppSettings(this.plugin.settings);
+            }
+          });
+        text.inputEl.type = 'password';
+      });
+
     // Add warning styling if Serper is selected but no API key is set
     if (currentProvider === 'serper' && !this.plugin.settings?.serperApiKey) {
       const warningFragment = document.createDocumentFragment();
@@ -218,6 +246,17 @@ export class HermesSettingsTab extends PluginSettingTab {
       serperSetting.settingEl.addClass('hermes-setting-warning');
     }
 
+    if (currentProvider === 'serpapi' && !this.plugin.settings?.serpApiKey) {
+      const warningFragment = document.createDocumentFragment();
+      const warningText = warningFragment.createSpan({
+        text: '⚠️ Warning: SerpApi is selected but no API key is configured. Web search will not work.'
+      });
+      warningText.addClass('hermes-warning-text');
+
+      serpApiSetting.setDesc(warningFragment);
+      serpApiSetting.settingEl.addClass('hermes-setting-warning');
+    }
+
 
     // Web Search Provider Selection
     new Setting(containerEl)
@@ -226,12 +265,13 @@ export class HermesSettingsTab extends PluginSettingTab {
       .addDropdown((dropdown) => {
         dropdown.addOption('google', 'Google (Gemini Search)');
         dropdown.addOption('serper', 'Serper.dev');
+        dropdown.addOption('serpapi', 'SerpApi');
         // Note: perplexity is available in type but not shown in UI per user request
         dropdown
           .setValue(this.plugin.settings?.webSearchProvider || DEFAULT_HERMES_SETTINGS.webSearchProvider)
           .onChange(async (value) => {
             if (this.plugin.settings) {
-              this.plugin.settings.webSearchProvider = value as 'google' | 'serper' | 'perplexity';
+              this.plugin.settings.webSearchProvider = value as 'google' | 'serper' | 'serpapi' | 'perplexity';
               await saveAppSettings(this.plugin.settings);
               // Refresh settings to update API key field states
               this.display();

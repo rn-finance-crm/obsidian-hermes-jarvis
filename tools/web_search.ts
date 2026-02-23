@@ -24,6 +24,46 @@ export const declaration = {
 
 export const instruction = `- internet_search: Use this to fetch real-time data or information not contained within the local vault. Always use this tool for questions about current events, celebrities, weather, or general knowledge.`;
 
+const getProviderKey = (provider: WebSearchProvider, settings: ReturnType<typeof loadAppSettings>): string | undefined => {
+  if (provider === 'serpapi') {
+    return settings?.serpApiKey?.trim();
+  }
+
+  if (provider === 'serper') {
+    return settings?.serperApiKey?.trim();
+  }
+
+  if (provider === 'perplexity') {
+    return settings?.perplexityApiKey?.trim();
+  }
+
+  return settings?.manualApiKey?.trim();
+};
+
+const resolveProvider = (settings: ReturnType<typeof loadAppSettings>): { provider: WebSearchProvider; apiKey?: string } => {
+  const configuredProvider: WebSearchProvider = settings?.webSearchProvider || 'google';
+
+  const serpApiKey = settings?.serpApiKey?.trim();
+  if (serpApiKey) {
+    return { provider: 'serpapi', apiKey: serpApiKey };
+  }
+
+  const configuredKey = getProviderKey(configuredProvider, settings);
+  if (configuredKey) {
+    return { provider: configuredProvider, apiKey: configuredKey };
+  }
+
+  const fallbackProviders: WebSearchProvider[] = ['serper', 'google', 'perplexity'];
+  for (const provider of fallbackProviders) {
+    const apiKey = getProviderKey(provider, settings);
+    if (apiKey) {
+      return { provider, apiKey };
+    }
+  }
+
+  return { provider: configuredProvider, apiKey: undefined };
+};
+
 export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise<{ text: string; groundingChunks: unknown[]; searchQuery: string }> => {
   const query = getStringArg(args, 'query');
   if (!query) {
@@ -37,21 +77,10 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
   });
 
   const settings = loadAppSettings();
-  const provider: WebSearchProvider = settings?.webSearchProvider || 'google';
-
-  // Get API key based on provider
-  let apiKey: string | undefined;
-  
-  if (provider === 'serper') {
-    apiKey = settings?.serperApiKey?.trim();
-  } else if (provider === 'perplexity') {
-    apiKey = settings?.perplexityApiKey?.trim();
-  } else {
-    apiKey = settings?.manualApiKey?.trim();
-  }
+  const { provider, apiKey } = resolveProvider(settings);
 
   if (!apiKey) {
-    throw new Error(`No API key found for provider: ${provider}. Please configure it in settings.`);
+    throw new Error(`No API key found for provider: ${provider}. Please configure API keys in settings.`);
   }
 
   try {

@@ -68,6 +68,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [systemInstruction, setSystemInstruction] = useState<string>(() => saved.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION);
   const [manualApiKey, setManualApiKey] = useState<string>(() => saved.manualApiKey || '');
   const [serperApiKey, setSerperApiKey] = useState<string>(() => saved.serperApiKey || '');
+  const [serpApiKey, setSerpApiKey] = useState<string>(() => saved.serpApiKey || '');
   const [currentFolder, setCurrentFolder] = useState<string>(() => saved.currentFolder || '/');
   const [currentNote, setCurrentNote] = useState<string | null>(() => saved.currentNote || null);
   const [totalTokens, setTotalTokens] = useState<number>(() => saved.totalTokens || 0);
@@ -142,6 +143,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       systemInstruction,
       manualApiKey,
       serperApiKey,
+      serpApiKey,
       currentFolder,
       currentNote,
       totalTokens
@@ -190,7 +192,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
         newContent: contextLines.join('\n')
       }
     };
-  }, [currentFolder, currentNote, customContext, systemInstruction, voiceName, manualApiKey, serperApiKey, totalTokens, saved]);
+  }, [currentFolder, currentNote, customContext, systemInstruction, voiceName, manualApiKey, serperApiKey, serpApiKey, totalTokens, saved]);
 
   // Helper functions for context sync
   const addModeMarker = (mode: 'voice' | 'text') => {
@@ -393,12 +395,13 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       systemInstruction,
       manualApiKey,
       serperApiKey,
+      serpApiKey,
       currentFolder,
       currentNote,
       totalTokens,
       muted
     });
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, muted]);
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, serpApiKey, currentFolder, currentNote, totalTokens, muted]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -419,6 +422,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
           setCustomContext(prev => reloadedSettings.customContext !== undefined ? reloadedSettings.customContext : prev);
           setSystemInstruction(prev => reloadedSettings.systemInstruction !== undefined ? reloadedSettings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION : prev);
           setSerperApiKey(prev => reloadedSettings.serperApiKey !== undefined ? reloadedSettings.serperApiKey : prev);
+          setSerpApiKey(prev => reloadedSettings.serpApiKey !== undefined ? reloadedSettings.serpApiKey : prev);
           if (reloadedSettings.muted !== undefined) setMuted(reloadedSettings.muted);
 
           // Only update manual API key if current one is empty and reloaded one has value
@@ -444,6 +448,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setCustomContext(prev => settings.customContext !== undefined ? settings.customContext : prev);
       setSystemInstruction(prev => settings.systemInstruction !== undefined ? settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION : prev);
       setSerperApiKey(prev => settings.serperApiKey !== undefined ? settings.serperApiKey : prev);
+      setSerpApiKey(prev => settings.serpApiKey !== undefined ? settings.serpApiKey : prev);
       if (settings.muted !== undefined) setMuted(settings.muted);
 
       // Only update manual API key if current one is empty and new one has value
@@ -954,6 +959,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             setManualApiKey={setManualApiKey}
             serperApiKey={serperApiKey}
             setSerperApiKey={setSerperApiKey}
+            serpApiKey={serpApiKey}
+            setSerpApiKey={setSerpApiKey}
             muted={muted}
             setMuted={setMuted}
             onUpdateApiKey={() => (window as { aistudio?: { openSelectKey?: () => void } }).aistudio?.openSelectKey()}

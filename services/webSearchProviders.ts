@@ -3,7 +3,7 @@
  * Supports pluggable search providers with consistent interface
  */
 
-export type WebSearchProvider = 'google' | 'serper' | 'perplexity';
+export type WebSearchProvider = 'google' | 'serper' | 'serpapi' | 'perplexity';
 
 export interface SearchResult {
   text: string;
@@ -153,6 +153,103 @@ class SerperProvider implements WebSearchProviderInterface {
 }
 
 /**
+ * SerpApi Search Provider
+ */
+class SerpApiProvider implements WebSearchProviderInterface {
+  name: WebSearchProvider = 'serpapi';
+
+  validate(apiKey: string): boolean {
+    return apiKey && apiKey.trim().length > 0;
+  }
+
+  async execute(query: string, apiKey: string): Promise<SearchResult> {
+    const startTime = performance.now();
+
+    if (!this.validate(apiKey)) {
+      throw new Error('Invalid SerpApi API key');
+    }
+
+    try {
+      const searchParams = new URLSearchParams({
+        engine: 'google',
+        q: query,
+        api_key: apiKey,
+        num: '10'
+      });
+
+      const response = await fetch(`https://serpapi.com/search.json?${searchParams.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`SerpApi API error: ${response.status}`);
+      }
+
+      const data = await response.json() as {
+        answer_box?: { title?: string; snippet?: string; answer?: string; link?: string };
+        organic_results?: Array<{ title?: string; snippet?: string; link?: string }>;
+        related_questions?: Array<{ question?: string; snippet?: string; link?: string }>;
+      };
+
+      const organicResults = data.organic_results || [];
+      const answerBox = data.answer_box;
+      const relatedQuestions = data.related_questions || [];
+
+      const blocks: string[] = [];
+
+      if (answerBox) {
+        const answerTitle = answerBox.title || 'Answer Box';
+        const answerText = answerBox.answer || answerBox.snippet || '';
+        const answerLink = answerBox.link || '';
+        blocks.push(`**${answerTitle}**\n${answerText}${answerLink ? `\n[${answerLink}](${answerLink})` : ''}`);
+      }
+
+      if (organicResults.length > 0) {
+        blocks.push(
+          organicResults
+            .map((r, i) => {
+              const line = `${i + 1}. **${r.title || 'Result'}**\n${r.snippet || ''}`;
+              return r.link ? `${line}\n[${r.link}](${r.link})` : line;
+            })
+            .join('\n\n')
+        );
+      }
+
+      if (relatedQuestions.length > 0) {
+        const relatedText = relatedQuestions
+          .slice(0, 5)
+          .map((q, i) => `${i + 1}. ${q.question || 'Question'}${q.snippet ? `\n${q.snippet}` : ''}${q.link ? `\n[${q.link}](${q.link})` : ''}`)
+          .join('\n\n');
+        blocks.push(`**Related Questions**\n${relatedText}`);
+      }
+
+      const text = blocks.length > 0 ? blocks.join('\n\n') : 'No results found.';
+      const duration = Math.round(performance.now() - startTime);
+
+      const groundingChunks = organicResults
+        .filter(r => r.link || r.title)
+        .map(r => ({
+          web: {
+            uri: r.link || '',
+            title: r.title || ''
+          }
+        }));
+
+      return {
+        text,
+        sourceUrl: organicResults[0]?.link,
+        metadata: {
+          provider: 'serpapi',
+          duration,
+          resultCount: organicResults.length,
+          groundingChunks
+        }
+      };
+    } catch (error) {
+      throw new Error(`SerpApi search failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+}
+
+/**
  * Perplexity Search Provider (optional, for future use)
  */
 class PerplexityProvider implements WebSearchProviderInterface {
@@ -214,6 +311,7 @@ class WebSearchProviderRegistry {
     this.providers = new Map([
       ['google', new GoogleSearchProvider()],
       ['serper', new SerperProvider()],
+      ['serpapi', new SerpApiProvider()],
       ['perplexity', new PerplexityProvider()]
     ]);
   }

@@ -156,3 +156,11 @@ open_folder_in_system({ path: "notes/daily-note.md" })
 - Use `dirlist` when you need to understand the complete folder structure and relationships
 - Use `get_folder_tree` for a simple list of all folders
 - All directory tools ignore files completely, focusing only on directory structure
+
+## Web Search Provider Notes
+
+- `internet_search` supports multiple providers: Gemini Google search, Serper, SerpApi, and Perplexity.
+- If a **SerpApi API key** is configured, `internet_search` prefers **SerpApi by default**.
+- Configure keys in settings:
+  - SerpApi signup: https://serpapi.com/users/sign_up
+  - Serper signup: https://serper.dev/

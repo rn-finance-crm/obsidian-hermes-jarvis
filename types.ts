@@ -157,6 +157,7 @@ export interface AppSettings {
   systemInstruction: string;
   manualApiKey?: string;
   serperApiKey?: string;
+  serpApiKey?: string;
   perplexityApiKey?: string;
   chatHistoryFolder?: string;
   currentFolder?: string;
@@ -164,7 +165,7 @@ export interface AppSettings {
   transcripts?: TranscriptionEntry[];
   totalTokens?: number;
   chatHistory?: string[];
-  webSearchProvider?: 'google' | 'serper' | 'perplexity';
+  webSearchProvider?: 'google' | 'serper' | 'serpapi' | 'perplexity';
   muted?: boolean;
 }
 
