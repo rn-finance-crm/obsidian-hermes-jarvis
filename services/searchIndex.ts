@@ -1,5 +1,5 @@
 import MiniSearch from 'minisearch';
-import { TFile } from 'obsidian';
+import { TFile, EventRef } from 'obsidian';
 import { getObsidianApp } from '../utils/environment';
 import type { SearchResult, SearchMatch } from '../types';
 
@@ -12,6 +12,7 @@ interface IndexedDocument {
 let miniSearch: MiniSearch<IndexedDocument> | null = null;
 let initialized = false;
 let initializing: Promise<void> | null = null;
+let eventRefs: EventRef[] = [];
 
 /**
  * Create a fresh MiniSearch instance with our field configuration.
@@ -81,50 +82,69 @@ function registerVaultEvents(): void {
   const app = getObsidianApp();
   if (!app || !miniSearch) return;
 
-  app.vault.on('create', async (file) => {
-    if (!(file instanceof TFile) || file.extension !== 'md') return;
-    try {
-      const content = await app.vault.cachedRead(file);
-      miniSearch!.add({ id: file.path, title: file.basename, content });
-    } catch (error) {
-      console.warn(`searchIndex: failed to index new file ${file.path}`, error);
-    }
-  });
+  eventRefs.push(
+    app.vault.on('create', async (file) => {
+      if (!(file instanceof TFile) || file.extension !== 'md') return;
+      try {
+        const content = await app.vault.cachedRead(file);
+        miniSearch!.add({ id: file.path, title: file.basename, content });
+      } catch (error) {
+        console.warn(`searchIndex: failed to index new file ${file.path}`, error);
+      }
+    }),
 
-  app.vault.on('modify', async (file) => {
-    if (!(file instanceof TFile) || file.extension !== 'md') return;
-    try {
-      const content = await app.vault.cachedRead(file);
-      miniSearch!.discard(file.path);
-      miniSearch!.add({ id: file.path, title: file.basename, content });
-    } catch (error) {
-      console.warn(`searchIndex: failed to re-index ${file.path}`, error);
-    }
-  });
+    app.vault.on('modify', async (file) => {
+      if (!(file instanceof TFile) || file.extension !== 'md') return;
+      try {
+        const content = await app.vault.cachedRead(file);
+        miniSearch!.discard(file.path);
+        miniSearch!.add({ id: file.path, title: file.basename, content });
+      } catch (error) {
+        console.warn(`searchIndex: failed to re-index ${file.path}`, error);
+      }
+    }),
 
-  app.vault.on('delete', (file) => {
-    if (!(file instanceof TFile) || file.extension !== 'md') return;
-    try {
-      miniSearch!.discard(file.path);
-    } catch {
-      // File may not have been in the index
-    }
-  });
+    app.vault.on('delete', (file) => {
+      if (!(file instanceof TFile) || file.extension !== 'md') return;
+      try {
+        miniSearch!.discard(file.path);
+      } catch {
+        // File may not have been in the index
+      }
+    }),
 
-  app.vault.on('rename', async (file, oldPath) => {
-    if (!(file instanceof TFile) || file.extension !== 'md') return;
-    try {
-      miniSearch!.discard(oldPath);
-    } catch {
-      // Old path may not have been in the index
+    app.vault.on('rename', async (file, oldPath) => {
+      if (!(file instanceof TFile) || file.extension !== 'md') return;
+      try {
+        miniSearch!.discard(oldPath);
+      } catch {
+        // Old path may not have been in the index
+      }
+      try {
+        const content = await app.vault.cachedRead(file);
+        miniSearch!.add({ id: file.path, title: file.basename, content });
+      } catch (error) {
+        console.warn(`searchIndex: failed to index renamed file ${file.path}`, error);
+      }
+    })
+  );
+}
+
+/**
+ * Clean up the search index and event listeners.
+ * Call from plugin.onunload() to prevent leaks on hot-reload.
+ */
+export function destroySearchIndex(): void {
+  const app = getObsidianApp();
+  if (app) {
+    for (const ref of eventRefs) {
+      app.vault.offref(ref);
     }
-    try {
-      const content = await app.vault.cachedRead(file);
-      miniSearch!.add({ id: file.path, title: file.basename, content });
-    } catch (error) {
-      console.warn(`searchIndex: failed to index renamed file ${file.path}`, error);
-    }
-  });
+  }
+  eventRefs = [];
+  miniSearch = null;
+  initialized = false;
+  initializing = null;
 }
 
 /**

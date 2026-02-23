@@ -35,9 +35,7 @@ function tagMatches(fileTag: string, searchTag: string): boolean {
  */
 export function searchByTags(tags: string[]): TagSearchResult[] {
   const app = getObsidianApp();
-  if (!app) {
-    throw new Error('Obsidian app not available');
-  }
+  if (!app) return [];
 
   if (tags.length === 0) {
     return [];

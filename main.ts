@@ -4,6 +4,7 @@ import { HermesMainViewObsidian, VIEW_TYPE_HERMES } from './HermesMainViewObsidi
 import { setObsidianPlugin, loadAppSettingsAsync, saveAppSettings } from './persistence/persistence';
 import { HermesSettingsTab, HermesSettings, DEFAULT_HERMES_SETTINGS } from './obsidian/HermesSettingsTab';
 import { DEFAULT_SYSTEM_INSTRUCTION } from './utils/defaultPrompt';
+import { destroySearchIndex } from './services/searchIndex';
 
 export default class HermesPlugin extends Plugin {
     settings: HermesSettings = DEFAULT_HERMES_SETTINGS;
@@ -179,7 +180,7 @@ export default class HermesPlugin extends Plugin {
     }
 
     onunload() {
-        // Clean up when plugin is disabled
+        destroySearchIndex();
     }
 
     async loadSettings() {
