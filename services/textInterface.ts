@@ -3,6 +3,7 @@ import { AppSettings, UsageMetadata, ToolData, LogEntry } from '../types';
 import { COMMAND_DECLARATIONS, executeCommand } from './commands';
 import { withRetry, RetryCounter } from '../utils/retryUtils';
 import { getSystemPrompt } from './getSystemPrompt';
+import { getToolActionName, getToolFilenameLabel, generateToolCallId, buildToolCompletionData } from '../utils/toolDisplay';
 
 export interface TextInterfaceCallbacks {
   onLog: (message: string, type: LogEntry['type'], duration?: number, errorDetails?: LogEntry['errorDetails']) => void;
@@ -127,23 +128,49 @@ export class GeminiTextInterface {
 
       for (const part of functionCalls) {
         const fc = part.functionCall;
+        const toolCallId = generateToolCallId();
+        const args = (fc.args || {}) as Record<string, unknown>;
+        const actionName = getToolActionName(fc.name);
+        const filenameLabel = getToolFilenameLabel(fc.name, args);
+        let toolUpdatedMessage = false;
+
+        // Create pending system message before execution
+        this.callbacks.onSystemMessage(`${actionName}...`, {
+          id: toolCallId,
+          name: fc.name,
+          filename: filenameLabel,
+          status: 'pending'
+        });
+
         try {
           const result = await executeCommand(fc.name, fc.args, {
             onLog: (m, t, d) => this.callbacks.onLog(m, t, d),
-            onSystem: (t, d) => this.callbacks.onSystemMessage(t, d),
+            onSystem: (t, d) => {
+              this.callbacks.onSystemMessage(t, d);
+              if (d?.status === 'success') {
+                toolUpdatedMessage = true;
+              }
+            },
             onFileState: (folder, note) => {
               this.currentFolder = folder;
               this.currentNote = Array.isArray(note) ? note[note.length - 1] : note;
               this.callbacks.onFileStateChange(folder, note);
             },
             onStopSession: () => {
-              // For text interface, we don't have a session to stop, but we can log it
               this.callbacks.onLog('Conversation ended via tool call', 'info');
             },
             onArchiveConversation: this.callbacks.onArchiveConversation
-          }, this.currentFolder);
+          }, toolCallId, this.currentFolder);
 
           console.debug(`Text interface tool result for ${fc.name}:`, typeof result, result ? JSON.stringify(result).substring(0, 300) : 'null');
+
+          // Send completion update if tool didn't already
+          if (!toolUpdatedMessage) {
+            const completion = buildToolCompletionData(fc.name, args, result, toolCallId, filenameLabel);
+            if (completion) {
+              this.callbacks.onSystemMessage(completion.text, completion.toolData);
+            }
+          }
 
           functionResponses.push({
             functionResponse: {
@@ -155,7 +182,7 @@ export class GeminiTextInterface {
           const errorMessage = err instanceof Error ? err.message : String(err);
           const errorStack = err instanceof Error ? err.stack : undefined;
           console.error(`Text interface tool error: ${fc.name} - ${errorMessage}`);
-          
+
           const errorDetails = {
             toolName: fc.name,
             content: JSON.stringify(fc.args, null, 2),
@@ -168,12 +195,12 @@ export class GeminiTextInterface {
             currentNote: this.currentNote
           };
           this.callbacks.onLog(`Tool execution error in ${fc.name}: ${errorMessage}`, 'error', undefined, errorDetails);
-          
-          // Show error as system message in chat
+
+          // Update existing pending message to error status
           this.callbacks.onSystemMessage(`Error in ${fc.name}: ${errorMessage}`, {
-            id: 'error-' + Date.now(),
-            name: 'error',
-            filename: '',
+            id: toolCallId,
+            name: fc.name,
+            filename: filenameLabel,
             status: 'error',
             error: errorMessage
           });

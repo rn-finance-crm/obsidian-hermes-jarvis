@@ -212,33 +212,48 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   };
 
   const computeDelta = (fromIndex: number): TranscriptionEntry[] => {
-    return transcriptsRef.current.slice(fromIndex).filter(t => 
-      t.role !== 'system' || // Include user/model messages
-      t.toolData?.name === 'mode_switch' // Include mode switches for context
+    return transcriptsRef.current.slice(fromIndex).filter(t =>
+      t.role === 'user' || t.role === 'model' || // Include user/model messages
+      (t.role === 'system' && t.toolData?.name === 'mode_switch') || // Include mode switches
+      (t.role === 'system' && t.toolData?.status === 'success' && t.toolData?.newContent) // Include successful tool results
     );
   };
 
   const formatDeltaForInjection = (delta: TranscriptionEntry[]): string => {
     if (delta.length === 0) return '';
-    
-    // Format as a single line with clear separators, avoiding newlines and special chars
+
     const messages = delta.map(t => {
-      const role = t.role === 'user' ? 'User' : t.role === 'model' ? 'Assistant' : 'System';
-      // Clean the text to remove newlines and problematic characters
-      const cleanText = t.text.replace(/[\n\r\t]/g, ' ').replace(/[^\w\s.,!?;:'"-]/g, '');
-      return `${role}: ${cleanText}`;
+      if (t.role === 'system' && t.toolData) {
+        if (t.toolData.name === 'mode_switch') return `[Switched to ${t.text}]`;
+        const summary = t.toolData.newContent
+          ? t.toolData.newContent.substring(0, 200)
+          : t.text;
+        return `[Tool ${t.toolData.name}: ${summary}]`;
+      }
+      const role = t.role === 'user' ? 'User' : 'Assistant';
+      return `${role}: ${t.text}`;
     });
-    
-    return `Previous conversation (${delta.length} messages): ${messages.join(' | ')}`;
+
+    return messages.join('\n\n');
   };
 
   const transcriptsToContents = (transcripts: TranscriptionEntry[]): Content[] => {
-    return transcripts
-      .filter(t => t.role === 'user' || t.role === 'model')
-      .map(t => ({
-        role: t.role as 'user' | 'model',
-        parts: [{ text: t.text }]
-      }));
+    const contents: Content[] = [];
+    for (const t of transcripts) {
+      if (t.role === 'user' || t.role === 'model') {
+        contents.push({
+          role: t.role as 'user' | 'model',
+          parts: [{ text: t.text }]
+        });
+      } else if (t.role === 'system' && t.toolData?.status === 'success' && t.toolData?.newContent) {
+        // Include successful tool results as model context so text API knows about prior tool use
+        contents.push({
+          role: 'model',
+          parts: [{ text: `[Executed ${t.toolData.name}: ${t.toolData.newContent.substring(0, 500)}]` }]
+        });
+      }
+    }
+    return contents;
   };
 
   const restoreConversation = (conversation?: TranscriptionEntry[]) => {

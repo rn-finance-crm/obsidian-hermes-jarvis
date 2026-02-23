@@ -9,6 +9,7 @@ import { getErrorMessage } from '../utils/getErrorMessage';
 import { requestWakeLock, releaseWakeLock, clearWakeLockReleaseHandler } from './wakeLock';
 import { startSilentAudio, stopSilentAudio } from './silentAudio';
 import { getSystemPrompt } from './getSystemPrompt';
+import { getToolActionName, getToolFilenameLabel, generateToolCallId, buildToolCompletionData } from '../utils/toolDisplay';
 
 type LiveSession = {
   sendRealtimeInput: (payload: { media: { data: string | Uint8Array; mimeType: string } }) => void;
@@ -400,39 +401,11 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
         }
 
         // Create a pending system message first
-        const toolCallId = `tool-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const toolCallId = generateToolCallId();
         const args = isRecord(fc.args) ? (fc.args as ToolArgs) : {};
-        
-        // Map tool names to descriptive labels
-        const toolLabels: { [key: string]: string } = {
-          'generate_image_from_context': 'Image Generation',
-          'create_file': 'File Creation',
-          'delete_file': 'File Deletion',
-          'edit_file': 'File Editing',
-          'update_file': 'File Update',
-          'move_file': 'File Move',
-          'rename_file': 'File Rename',
-          'create_directory': 'Directory Creation',
-          'list_directory': 'Vault Scan',
-          'list_vault_files': 'File Explorer',
-          'dirlist': 'Directory Structure',
-          'get_folder_tree': 'Folder Tree',
-          'read_file': 'File Reading',
-          'search_vault': 'Vault Search',
-          'search_regexp': 'Pattern Search',
-          'search_replace_file': 'File Search & Replace',
-          'search_replace_global': 'Global Search & Replace',
-          'internet_search': 'Web Search',
-          'reveal_active_pane': 'Active Pane Info',
-          'open_folder_in_system': 'System File Browser',
-          'end_conversation': 'Session End',
-          'topic_switch': 'Topic Switch'
-        };
-        
-        const actionName = toolLabels[fc.name] || fc.name.replace(/_/g, ' ').toUpperCase();
+        const actionName = getToolActionName(fc.name);
         let toolUpdatedMessage = false;  // Track if tool already updated the message
-        
-        const filenameLabel = getStringArg(args, 'filename') || (fc.name === 'internet_search' ? 'Web' : 'Registry');
+        const filenameLabel = getToolFilenameLabel(fc.name, args);
         this.callbacks.onSystemMessage(`${actionName}...`, {
           id: toolCallId,
           name: fc.name,
@@ -468,69 +441,11 @@ export class GeminiVoiceAssistant implements VoiceAssistant {
           const responseData = JSON.stringify({ result: response });
           console.debug(`Tool response: ${fc.name}, size: ${responseData.length} chars`);
 
-          const responseRecord = isRecord(response) ? response : undefined;
-          const responseText = responseRecord && typeof responseRecord.text === 'string' ? responseRecord.text : undefined;
-
           // Only update the message if the tool didn't already do it
           if (!toolUpdatedMessage) {
-            // For create operations, show containing folder instead of JSON status
-            let displayContent = '';
-            if (fc.name === 'create_file' || fc.name === 'create_directory') {
-              const path = getStringArg(args, 'filename') || getStringArg(args, 'path');
-              if (path) {
-                // Extract directory from path
-                const lastSlashIndex = path.lastIndexOf('/');
-                const containingFolder = lastSlashIndex === -1 ? '/' : path.substring(0, lastSlashIndex + 1);
-                displayContent = `Created in: ${containingFolder}`;
-              }
-            } else if (fc.name === 'move_file' || fc.name === 'rename_file') {
-              const sourcePath = getStringArg(args, 'sourcePath') || getStringArg(args, 'oldPath');
-              const targetPath = getStringArg(args, 'targetPath') || getStringArg(args, 'newPath');
-              if (sourcePath && targetPath) {
-                displayContent = `Moved from: ${sourcePath} to: ${targetPath}`;
-              }
-            } else if (fc.name === 'update_file' || fc.name === 'edit_file') {
-              const filename = getStringArg(args, 'filename');
-              if (filename) {
-                displayContent = `Updated: ${filename}`;
-              }
-            } else if (fc.name === 'delete_file') {
-              const filename = getStringArg(args, 'filename');
-              if (filename) {
-                displayContent = `Deleted: ${filename}`;
-              }
-            } else if (responseText) {
-              displayContent = responseText;
-            } else if (typeof response === 'string') {
-              displayContent = response;
-            }
-
-            // Only send completion message if we have display content
-            if (displayContent) {
-              const groundingChunks = Array.isArray(responseRecord?.groundingChunks) ? responseRecord?.groundingChunks : [];
-              const responseFiles = Array.isArray(responseRecord?.files)
-                ? responseRecord?.files.filter((file): file is string => typeof file === 'string')
-                : undefined;
-              const responseDirectories = Array.isArray(responseRecord?.directories)
-                ? responseRecord?.directories
-                    .map((dir) => (isRecord(dir) && typeof dir.path === 'string' ? dir.path : null))
-                    .filter((path): path is string => Boolean(path))
-                : undefined;
-              const responseFolders = Array.isArray(responseRecord?.folders)
-                ? responseRecord?.folders.filter((folder): folder is string => typeof folder === 'string')
-                : undefined;
-              const directoryInfo = Array.isArray(responseRecord?.directoryInfo) ? responseRecord?.directoryInfo : undefined;
-
-              this.callbacks.onSystemMessage(`${actionName} Complete`, {
-                id: toolCallId,
-                name: fc.name,
-                filename: filenameLabel,
-                status: 'success',
-                newContent: displayContent,
-                groundingChunks,
-                files: responseFiles || responseDirectories || responseFolders,
-                directoryInfo
-              });
+            const completion = buildToolCompletionData(fc.name, args, response, toolCallId, filenameLabel);
+            if (completion) {
+              this.callbacks.onSystemMessage(completion.text, completion.toolData);
             }
           }
 
