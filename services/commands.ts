@@ -17,6 +17,7 @@ import * as topic_switch from '../tools/topic_switch';
 import * as create_directory from '../tools/create_directory';
 import * as delete_file from '../tools/delete_file';
 import * as web_search from '../tools/web_search';
+import * as web_fetch from '../tools/web_fetch';
 import * as end_conversation from '../tools/end_conversation';
 import * as generate_image_from_context from '../tools/generate_image_from_context';
 import * as reveal_active_pane from '../tools/reveal_active_pane';
@@ -74,6 +75,7 @@ const TOOLS: Record<string, ToolModule> = {
   search_and_replace_regex_global: search_replace_global,
   topic_switch,
   internet_search: web_search,
+  web_fetch,
   generate_image_from_context,
   end_conversation,
   reveal_active_pane,
@@ -120,7 +122,7 @@ export const executeCommand = async (
     callbacks.onSystem(`${name.replace(/_/g, ' ').toUpperCase()}...`, {
       id: toolCallId,
       name,
-      filename: getStringArg(args, 'filename') || (name === 'internet_search' ? 'Web' : 'Registry'),
+      filename: getStringArg(args, 'filename') || ((name === 'internet_search' || name === 'web_fetch') ? 'Web' : 'Registry'),
       status: 'pending'
     });
   }
@@ -159,7 +161,7 @@ export const executeCommand = async (
     callbacks.onLog(`Error in ${name}: ${errorMessage}`, 'error', duration, errorDetails);
     wrappedCallbacks.onSystem(`Error: ${errorMessage}`, { 
       name, 
-      filename: getStringArg(args, 'filename') || (name === 'internet_search' ? 'Web' : 'unknown'), 
+      filename: getStringArg(args, 'filename') || ((name === 'internet_search' || name === 'web_fetch') ? 'Web' : 'unknown'), 
       error: errorMessage,
       status: 'error'
     } as ToolData);

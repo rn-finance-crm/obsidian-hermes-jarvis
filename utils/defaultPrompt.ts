@@ -15,6 +15,7 @@ import * as search_replace_file from '../tools/search_replace_file';
 import * as search_replace_global from '../tools/search_replace_global';
 import * as topic_switch from '../tools/topic_switch';
 import * as web_search from '../tools/web_search';
+import * as web_fetch from '../tools/web_fetch';
 import * as end_conversation from '../tools/end_conversation';
 import * as image_search from '../tools/image_search';
 import * as getUserVaultContext from '../tools/getUserVaultContext';
@@ -38,6 +39,7 @@ const toolInstructions = [
   search_replace_global.instruction,
   topic_switch.instruction,
   web_search.instruction,
+  web_fetch.instruction,
   image_search.instruction,
   end_conversation.instruction,
   getUserVaultContext.instruction,
@@ -50,7 +52,7 @@ Vault structure: Flat markdown files.
 
 CORE RESPONSE RULES:
 1. NO CONFIRMATIONS: Do NOT say "Done.", "Finished.", or any variation of completion confirmation after a tool call. The UI handles state visualization.
-2. INFORMATIONAL TOOLS: When calling "read_file", "list_directory", "list_vault_files", or "internet_search", remain silent unless the user asked a specific question about the content.
+2. INFORMATIONAL TOOLS: When calling "read_file", "list_directory", "list_vault_files", "internet_search", or "web_fetch", remain silent unless the user asked a specific question about the content.
 3. BATCH ACTIONS: If performing multiple modifications, wait until all are finished, then provide a single concise summary.
 4. NO "DONE" ON TOPICS: Do not say "Done" or confirm when switching topics. Just proceed with the new context.
 5. Conciseness is mandatory. Avoid conversational filler.

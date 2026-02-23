@@ -31,6 +31,7 @@ const TOOL_LABELS: Record<string, string> = {
   'search_replace_file': 'File Search & Replace',
   'search_replace_global': 'Global Search & Replace',
   'internet_search': 'Web Search',
+  'web_fetch': 'Web Fetch',
   'reveal_active_pane': 'Active Pane Info',
   'open_folder_in_system': 'System File Browser',
   'end_conversation': 'Session End',
@@ -44,7 +45,7 @@ export function getToolActionName(toolName: string): string {
 
 /** Get the filename label to display for a tool call */
 export function getToolFilenameLabel(toolName: string, args: ToolArgs): string {
-  return getStringArg(args, 'filename') || (toolName === 'internet_search' ? 'Web' : 'Registry');
+  return getStringArg(args, 'filename') || ((toolName === 'internet_search' || toolName === 'web_fetch') ? 'Web' : 'Registry');
 }
 
 /** Generate a unique tool call ID */
