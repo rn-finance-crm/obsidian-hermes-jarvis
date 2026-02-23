@@ -1,9 +1,10 @@
 import type { Plugin } from 'obsidian';
-import type { AppSettings, ArchivedConversation } from '../types';
+import type { AppSettings, ArchivedConversation, DeepResearchInProgressItem } from '../types';
 
 let obsidianPlugin: Plugin | null = null;
 let cachedSettings: AppSettings | null = null;
 let cachedConversations: ArchivedConversation[] | null = null;
+let cachedDeepResearchInProgress: DeepResearchInProgressItem[] | null = null;
 
 // Mutex lock to prevent concurrent writes
 let persistLock: Promise<void> = Promise.resolve();
@@ -164,4 +165,45 @@ export const deleteArchivedConversation = async (key: string): Promise<void> => 
   const existing = await loadArchivedConversations();
   const updated = existing.filter(conv => conv.key !== key);
   await saveArchivedConversations(updated);
+};
+
+export const saveDeepResearchInProgress = async (items: DeepResearchInProgressItem[]): Promise<void> => {
+  cachedDeepResearchInProgress = items;
+
+  await persistData((currentData) => ({
+    ...currentData,
+    deepResearchInProgress: items
+  }));
+};
+
+export const loadDeepResearchInProgress = async (): Promise<DeepResearchInProgressItem[]> => {
+  if (cachedDeepResearchInProgress) {
+    return cachedDeepResearchInProgress;
+  }
+
+  if (obsidianPlugin) {
+    try {
+      const data = await obsidianPlugin.loadData();
+      cachedDeepResearchInProgress = data?.deepResearchInProgress || [];
+      return cachedDeepResearchInProgress;
+    } catch (error) {
+      console.error('Failed to load deep research in-progress items', error);
+      return [];
+    }
+  }
+
+  return [];
+};
+
+export const addDeepResearchInProgress = async (item: DeepResearchInProgressItem): Promise<void> => {
+  const existing = await loadDeepResearchInProgress();
+  const updated = existing.filter(entry => entry.interactionId !== item.interactionId);
+  updated.push(item);
+  await saveDeepResearchInProgress(updated);
+};
+
+export const removeDeepResearchInProgress = async (interactionId: string): Promise<void> => {
+  const existing = await loadDeepResearchInProgress();
+  const updated = existing.filter(entry => entry.interactionId !== interactionId);
+  await saveDeepResearchInProgress(updated);
 };

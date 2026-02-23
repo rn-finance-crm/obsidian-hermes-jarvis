@@ -1,7 +1,8 @@
 import { Type, GoogleGenAI } from '@google/genai';
 import { requestUrl } from 'obsidian';
-import type { ToolCallbacks } from '../types';
+import type { ToolCallbacks, DeepResearchInProgressItem, ToolData } from '../types';
 import { loadAppSettings } from '../persistence/persistence';
+import { addDeepResearchInProgress, loadDeepResearchInProgress, removeDeepResearchInProgress } from '../persistence/persistence';
 import { createDirectory, createFile, updateFile } from '../services/vaultOperations';
 import { getObsidianApp } from '../utils/environment';
 
@@ -436,14 +437,22 @@ const collectThinkingFromEvent = (event: unknown): string[] => {
   return out;
 };
 
+const activeResearchJobs = new Set<string>();
+
+type ResearchRunOptions = {
+  existingItem?: DeepResearchInProgressItem;
+  toolCallId?: string;
+};
+
 const runBackgroundResearch = async (
   query: string,
   shortName: string,
   longName: string,
-  callbacks: ToolCallbacks
+  callbacks: ToolCallbacks,
+  options?: ResearchRunOptions
 ): Promise<void> => {
   const startedAt = performance.now();
-  const startDate = new Date();
+  const startDate = options?.existingItem ? new Date(options.existingItem.startedAt) : new Date();
 
   const settings = loadAppSettings();
   const apiKey = settings?.manualApiKey?.trim();
@@ -456,107 +465,142 @@ const runBackgroundResearch = async (
 
   await createDirectory(researchFolder);
 
-  const ai = new GoogleGenAI({ apiKey });
-  let initialInteraction: unknown;
-  let selectedAgent = RESEARCH_AGENT_CANDIDATES[0];
-  let lastCreatePayload: unknown = null;
+  const timestamp = dateForFilename(startDate);
+  const filename = `${timestamp}-${slugify(shortName || guessShortName(query)) || 'research'}.md`;
+  const fullPath = options?.existingItem?.fullPath || `${researchFolder}/${filename}`;
+  const link = toWikiLink(fullPath);
 
-  callbacks.onLog('Research: creating background interaction', 'action');
+  const pendingToolId = options?.existingItem?.toolCallId || options?.toolCallId;
 
-  let lastCreateError: Error | null = null;
-  for (const agent of RESEARCH_AGENT_CANDIDATES) {
+  const emitSystem = (text: string, toolData: Record<string, unknown>) => {
+    callbacks.onSystem(text, { ...toolData, ...(pendingToolId ? { id: pendingToolId } : {}) } as ToolData);
+  };
+
+  if (!options?.existingItem) {
+    const placeholderFrontmatter = buildFrontmatter({
+      date: nowDate(),
+      query,
+      shortName,
+      longName,
+      researchModel: 'pending',
+      elapsed: 0,
+      elapsedHuman: '00:00',
+      tokenCount: null,
+      shortConclusion: 'Research in progress.'
+    });
+    const placeholderBody = [
+      placeholderFrontmatter,
+      '',
+      '# Research Result',
+      '',
+      '_Research in progress..._',
+      '',
+      '---',
+      'Train of Thought',
+      '---',
+      '- Research started'
+    ].join('\n');
+
     try {
-      if (isObsidianRuntime()) {
-        initialInteraction = await interactionApiRequest(apiKey, '', 'POST', {
-          input: query,
-          agent,
-          background: true,
-          agent_config: {
-            type: 'deep-research',
-            thinking_summaries: 'auto'
-          }
-        });
-      } else {
-        initialInteraction = await ai.interactions.create({
-          input: query,
-          agent,
-          background: true,
-          agent_config: {
-            type: 'deep-research',
-            thinking_summaries: 'auto'
-          }
-        });
-      }
-      lastCreatePayload = initialInteraction;
-      selectedAgent = agent;
-      break;
+      await createFile(fullPath, placeholderBody);
+      callbacks.onLog(`Research placeholder file created: ${fullPath}`, 'action');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      callbacks.onLog(`Research agent ${agent} unavailable: ${message}`, 'info');
-      lastCreateError = error instanceof Error ? error : new Error(message);
+      if (message.toLowerCase().includes('already exists')) {
+        await updateFile(fullPath, placeholderBody);
+        callbacks.onLog(`Research placeholder file updated: ${fullPath}`, 'info');
+      } else {
+        throw error;
+      }
     }
   }
 
-  if (!initialInteraction) {
-    throw lastCreateError || new Error('Failed to create research interaction');
+  const ai = new GoogleGenAI({ apiKey });
+  let initialInteraction: unknown = null;
+  let selectedAgent = options?.existingItem?.agent || RESEARCH_AGENT_CANDIDATES[0];
+  let lastCreatePayload: unknown = null;
+  let interactionId = options?.existingItem?.interactionId || null;
+
+  if (!interactionId) {
+    callbacks.onLog('Research: creating background interaction', 'action');
+
+    let lastCreateError: Error | null = null;
+    for (const agent of RESEARCH_AGENT_CANDIDATES) {
+      try {
+        if (isObsidianRuntime()) {
+          initialInteraction = await interactionApiRequest(apiKey, '', 'POST', {
+            input: query,
+            agent,
+            background: true,
+            agent_config: {
+              type: 'deep-research',
+              thinking_summaries: 'auto'
+            }
+          });
+        } else {
+          initialInteraction = await ai.interactions.create({
+            input: query,
+            agent,
+            background: true,
+            agent_config: {
+              type: 'deep-research',
+              thinking_summaries: 'auto'
+            }
+          });
+        }
+        lastCreatePayload = initialInteraction;
+        selectedAgent = agent;
+        break;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        callbacks.onLog(`Research agent ${agent} unavailable: ${message}`, 'info');
+        lastCreateError = error instanceof Error ? error : new Error(message);
+      }
+    }
+
+    if (!initialInteraction) {
+      throw lastCreateError || new Error('Failed to create research interaction');
+    }
+
+    interactionId = getInteractionId(initialInteraction);
+    if (!interactionId) {
+      callbacks.onLog(`Research create response: ${JSON.stringify(initialInteraction).slice(0, 1000)}`, 'info');
+      throw new Error('Research did not return a valid interaction id');
+    }
+
+    await addDeepResearchInProgress({
+      interactionId,
+      query,
+      shortName,
+      longName,
+      fullPath,
+      agent: selectedAgent,
+      startedAt: startDate.toISOString(),
+      ...(pendingToolId ? { toolCallId: pendingToolId } : {})
+    });
   }
 
-  const interactionId = getInteractionId(initialInteraction);
   if (!interactionId) {
-    callbacks.onLog(`Research create response: ${JSON.stringify(initialInteraction).slice(0, 1000)}`, 'info');
-    throw new Error('Research did not return a valid interaction id');
+    throw new Error('Research interaction id missing');
   }
+
+  if (activeResearchJobs.has(interactionId)) {
+    callbacks.onLog(`Research already active, skipping duplicate monitor: ${interactionId}`, 'info');
+    return;
+  }
+  activeResearchJobs.add(interactionId);
+
+  try {
 
   callbacks.onLog(`Research interaction created: ${interactionId}`, 'action');
   callbacks.onLog(`Research agent selected: ${selectedAgent}`, 'info');
 
   const thinkingLines: string[] = ['Research job queued'];
   let lastUiPush = 0;
-  const timestamp = dateForFilename(startDate);
-  const filename = `${timestamp}-${slugify(shortName || guessShortName(query)) || 'research'}.md`;
-  const fullPath = `${researchFolder}/${filename}`;
-  const link = toWikiLink(fullPath);
 
-  const placeholderFrontmatter = buildFrontmatter({
-    date: nowDate(),
-    query,
-    shortName,
-    longName,
-    researchModel: selectedAgent,
-    elapsed: 0,
-    elapsedHuman: '00:00',
-    tokenCount: null,
-    shortConclusion: 'Research in progress.'
-  });
-  const placeholderBody = [
-    placeholderFrontmatter,
-    '',
-    '# Research Result',
-    '',
-    '_Research in progress..._',
-    '',
-    '---',
-    'Train of Thought',
-    '---',
-    '- Research started'
-  ].join('\n');
+  console.debug('[start_research] monitor start', { query, interactionId, selectedAgent, fullPath, resumed: Boolean(options?.existingItem) });
 
-  try {
-    await createFile(fullPath, placeholderBody);
-    callbacks.onLog(`Research placeholder file created: ${fullPath}`, 'action');
-    console.debug('[start_research] placeholder created', { fullPath, query, interactionId, selectedAgent });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.toLowerCase().includes('already exists')) {
-      await updateFile(fullPath, placeholderBody);
-      callbacks.onLog(`Research placeholder file updated: ${fullPath}`, 'info');
-      console.debug('[start_research] placeholder updated', { fullPath, query, interactionId, selectedAgent });
-    } else {
-      throw error;
-    }
-  }
-
-  callbacks.onSystem('research started, will get back when the results are in.', {
+  emitSystem('research started, will get back when the results are in.', {
     name: 'start_research',
     filename: query,
     status: 'pending',
@@ -579,7 +623,7 @@ const runBackgroundResearch = async (
         const now = performance.now();
         if (now - lastUiPush > 700 && newLines.length > 0) {
           lastUiPush = now;
-          callbacks.onSystem('research started, will get back when the results are in.', {
+          emitSystem('research started, will get back when the results are in.', {
             name: 'start_research',
             filename: query,
             status: 'pending',
@@ -686,7 +730,7 @@ const runBackgroundResearch = async (
 
     if (now - lastUiPush > 1200) {
       lastUiPush = now;
-      callbacks.onSystem('research started, will get back when the results are in.', {
+      emitSystem('research started, will get back when the results are in.', {
         name: 'start_research',
         filename: query,
         status: 'pending',
@@ -715,7 +759,7 @@ const runBackgroundResearch = async (
       createPreview: lastCreatePayload ? JSON.stringify(lastCreatePayload).slice(0, 1200) : null
     };
     console.error('[start_research] timeout', debugPayload);
-    callbacks.onSystem('Research timed out before completion', {
+    emitSystem('Research timed out before completion', {
       name: 'start_research',
       filename: query,
       status: 'error',
@@ -736,7 +780,7 @@ const runBackgroundResearch = async (
       lastPollPreview: lastPollPayload ? JSON.stringify(lastPollPayload).slice(0, 1200) : null
     };
     console.error('[start_research] terminal failure', failureDebug);
-    callbacks.onSystem(`Research ended with status: ${finalStatus}`, {
+    emitSystem(`Research ended with status: ${finalStatus}`, {
       name: 'start_research',
       filename: query,
       status: 'error',
@@ -745,6 +789,7 @@ const runBackgroundResearch = async (
       error: `Terminal status: ${finalStatus}`,
       newContent: `File: ${link}\nAgent: ${selectedAgent}\nStatus: ${finalStatus}\nPath: ${lastSuccessfulLookupPath || 'n/a'}\n\nDebug:\n${JSON.stringify(failureDebug, null, 2)}`
     });
+    await removeDeepResearchInProgress(interactionId);
     throw new Error(`Research ended with status: ${finalStatus}. Debug: ${JSON.stringify(failureDebug)}`);
   }
 
@@ -807,7 +852,7 @@ const runBackgroundResearch = async (
     usage: usageFinal
   });
 
-  callbacks.onSystem('Research complete', {
+  emitSystem('Research complete', {
     name: 'start_research',
     filename: query,
     status: 'success',
@@ -825,6 +870,10 @@ const runBackgroundResearch = async (
         : 'Token detail: n/a'
     ].join('\n')
   });
+  await removeDeepResearchInProgress(interactionId);
+  } finally {
+    activeResearchJobs.delete(interactionId);
+  }
 };
 
 export const declaration = {
@@ -842,6 +891,60 @@ export const declaration = {
 };
 
 export const instruction = `- start_research: Use this when the user asks for async/background research. Start it immediately, then respond exactly: "research started, will get back when the results are in." Do not block waiting for completion.`;
+
+export const resumePendingDeepResearch = async (callbacks: ToolCallbacks): Promise<void> => {
+  const items = await loadDeepResearchInProgress();
+  if (!items.length) return;
+
+  callbacks.onLog(`Resuming ${items.length} pending deep research task(s)`, 'info');
+
+  for (const item of items) {
+    const safeItem: DeepResearchInProgressItem = {
+      interactionId: item.interactionId,
+      query: item.query,
+      shortName: item.shortName,
+      longName: item.longName,
+      fullPath: item.fullPath,
+      agent: item.agent || RESEARCH_AGENT_CANDIDATES[0],
+      startedAt: item.startedAt,
+      ...(item.toolCallId ? { toolCallId: item.toolCallId } : {})
+    };
+    const resumeToolId = safeItem.toolCallId || `tool-resume-${safeItem.interactionId.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+
+    callbacks.onSystem('Recovered pending background research task', {
+      name: 'start_research',
+      filename: safeItem.query,
+      status: 'pending',
+      dropdown: true,
+      targetPath: safeItem.fullPath,
+      id: resumeToolId,
+      newContent: `Resuming saved task\nFile: ${toWikiLink(safeItem.fullPath)}\nInteraction: ${safeItem.interactionId}`
+    });
+
+    void runBackgroundResearch(safeItem.query, safeItem.shortName, safeItem.longName, callbacks, {
+      existingItem: safeItem,
+      toolCallId: resumeToolId
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[start_research] failed while resuming', {
+        interactionId: safeItem.interactionId,
+        query: safeItem.query,
+        fullPath: safeItem.fullPath,
+        message,
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      callbacks.onSystem(`Failed to resume research: ${message}`, {
+        name: 'start_research',
+        filename: safeItem.query,
+        status: 'error',
+        dropdown: true,
+        targetPath: safeItem.fullPath,
+        id: resumeToolId,
+        error: message
+      });
+    });
+  }
+};
 
 export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise<{ status: string; query: string }> => {
   const query = getStringArg(args, 'query');

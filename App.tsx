@@ -9,6 +9,7 @@ import { GeminiTextInterface } from './services/textInterface';
 import { DEFAULT_SYSTEM_INSTRUCTION } from './utils/defaultPrompt';
 import { isObsidian } from './utils/environment';
 import { executeCommand } from './services/commands';
+import { resumePendingDeepResearch } from './tools/start_research';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
 import { getSystemPrompt } from './services/getSystemPrompt';
@@ -606,6 +607,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   // Add a counter for unique system message IDs
   const systemMessageCounterRef = useRef(0);
   const announcedResearchRef = useRef<Set<string>>(new Set());
+  const resumedResearchOnBootRef = useRef(false);
 
   const handleSystemMessage = useCallback((text: string, toolData?: ToolData) => {
     if (toolData?.name === 'start_research' && toolData?.status === 'success' && toolData?.id) {
@@ -647,6 +649,25 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     });
     setFileCount(listDirectory().length);
   }, [status]);
+
+  useEffect(() => {
+    const activeKey = manualApiKey.trim();
+    if (!activeKey) return;
+    if (resumedResearchOnBootRef.current) return;
+
+    resumedResearchOnBootRef.current = true;
+    void resumePendingDeepResearch({
+      onLog: (message, type, duration, errorDetails) => addLog(message, type, duration, errorDetails),
+      onSystem: (text, toolData) => handleSystemMessage(text, toolData),
+      onFileState: () => {
+        // No folder/note state changes expected from resume polling.
+      }
+    }).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('[deep_research_resume] failed', { message, stack: getErrorStack(error) });
+      addLog(`Failed to resume pending research tasks: ${message}`, 'error');
+    });
+  }, [manualApiKey, addLog, handleSystemMessage]);
 
   const handleImageDownload = useCallback(async (image: ImageSearchResult, index: number) => {
     try {

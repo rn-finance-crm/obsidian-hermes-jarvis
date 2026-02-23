@@ -1,5 +1,5 @@
 import type { Plugin } from 'obsidian';
-import type { AppSettings, ArchivedConversation } from '../types';
+import type { AppSettings, ArchivedConversation, DeepResearchInProgressItem } from '../types';
 import * as localStoragePersistence from '../persistence/persistence-local-storage';
 import * as obsidianPersistence from '../persistence/persistence-obsidian';
 
@@ -96,4 +96,32 @@ export const deleteArchivedConversation = async (key: string): Promise<void> => 
     return obsidianPersistence.deleteArchivedConversation(key);
   }
   return localStoragePersistence.deleteArchivedConversation(key);
+};
+
+export const saveDeepResearchInProgress = async (items: DeepResearchInProgressItem[]): Promise<void> => {
+  if (useObsidian) {
+    return obsidianPersistence.saveDeepResearchInProgress(items);
+  }
+  return localStoragePersistence.saveDeepResearchInProgress(items);
+};
+
+export const loadDeepResearchInProgress = async (): Promise<DeepResearchInProgressItem[]> => {
+  if (useObsidian) {
+    return obsidianPersistence.loadDeepResearchInProgress();
+  }
+  return localStoragePersistence.loadDeepResearchInProgress();
+};
+
+export const addDeepResearchInProgress = async (item: DeepResearchInProgressItem): Promise<void> => {
+  if (useObsidian) {
+    return obsidianPersistence.addDeepResearchInProgress(item);
+  }
+  return localStoragePersistence.addDeepResearchInProgress(item);
+};
+
+export const removeDeepResearchInProgress = async (interactionId: string): Promise<void> => {
+  if (useObsidian) {
+    return obsidianPersistence.removeDeepResearchInProgress(interactionId);
+  }
+  return localStoragePersistence.removeDeepResearchInProgress(interactionId);
 };
