@@ -196,12 +196,12 @@ function extractLineMatches(
  * Lazily initializes the index on first call.
  *
  * @param query - The search query string
- * @param limit - Maximum number of results to return (default 10)
+ * @param limit - Maximum number of results to return (default 30)
  * @returns Array of SearchResult with filename, score, and matching lines
  */
 export async function searchIndexed(
   query: string,
-  limit: number = 10
+  limit: number = 30
 ): Promise<SearchResult[]> {
   const app = getObsidianApp();
   if (!app) return [];

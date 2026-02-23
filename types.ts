@@ -23,10 +23,13 @@ export interface SearchMatch {
   contextAfter?: string[];
 }
 
+export type SearchSource = 'keyword' | 'semantic' | 'tag';
+
 export interface SearchResult {
   filename: string;
   matches: SearchMatch[];
   score?: number;
+  source?: SearchSource;
 }
 
 export interface TagSearchResult {

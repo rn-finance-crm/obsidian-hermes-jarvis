@@ -15,7 +15,7 @@ export function isSmartConnectionsAvailable(): boolean {
  * Perform semantic search via Smart Connections' lookup API.
  * Returns empty array if SC is not available or search fails.
  */
-export async function semanticSearch(query: string, limit: number = 10): Promise<SemanticSearchResult[]> {
+export async function semanticSearch(query: string, limit: number = 20): Promise<SemanticSearchResult[]> {
   const app = getObsidianApp();
   if (!app) return [];
 

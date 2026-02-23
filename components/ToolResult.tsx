@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ToolData, FileDiff, SearchResult, SearchMatch, ImageSearchResult, DownloadedImage, DirectoryInfoItem, SemanticSearchResult, TagSearchResult } from '../types';
+import { ToolData, FileDiff, SearchResult, SearchMatch, ImageSearchResult, DownloadedImage, DirectoryInfoItem, SemanticSearchResult, TagSearchResult, SearchSource } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
 import { COMMAND_DECLARATIONS } from '../services/commands';
 import { openFileInObsidian } from '../utils/environment';
@@ -10,6 +10,13 @@ interface ToolResultProps {
   isLast: boolean;
   onImageDownload?: (image: ImageSearchResult, index: number) => Promise<DownloadedImage | undefined> | void;
 }
+
+// Source badge styles and labels
+const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
+  keyword: { label: 'BM25', className: 'hermes-info-bg/15 hermes-info' },
+  semantic: { label: 'SEM', className: 'hermes-interactive-bg/15 hermes-text-accent' },
+  tag: { label: 'TAG', className: 'hermes-success-bg/15 hermes-success' },
+};
 
 // SearchResultsView component for displaying search results in a dropdown
 const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: string, pattern?: string, tagResults?: TagSearchResult[] }> = ({ searchResults, keyword, pattern, tagResults }) => {
@@ -33,73 +40,78 @@ const SearchResultsView: React.FC<{ searchResults: SearchResult[], keyword?: str
     <div className="p-4 space-y-3">
       <div className="pb-3 hermes-border-b mb-3">
         <div className="text-sm font-medium hermes-text-normal mb-1">
-          Found {searchResults.length} file{searchResults.length !== 1 ? 's' : ''} for "{getSearchTerm()}"
+          Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{getSearchTerm()}"
         </div>
         <div className="text-xs hermes-text-muted">
           Click any result to open the file
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto">
-        {searchResults.map((result, resultIndex) => (
-          <div key={resultIndex} className="space-y-1">
-            <div
-              className="flex items-center space-x-3 p-3 rounded-xl hermes-bg-secondary/5 hermes-border/5 hermes-hover:bg-secondary/10 hermes-hover:border/10 transition-all group cursor-pointer"
-              onClick={() => handleFileClick(result.filename)}
-            >
-              <div className="w-8 h-8 rounded-lg hermes-interactive-bg/10 flex items-center justify-center shrink-0 hermes-border/20">
-                <svg className="w-4 h-4 hermes-text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div className="flex flex-col truncate flex-1">
-                <span className="text-xs font-bold hermes-text-normal group-hover:hermes-text-accent transition-colors truncate">
-                  {result.filename}
-                </span>
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-[9px] hermes-text-muted truncate font-mono">
-                    {result.matches.length} match{result.matches.length !== 1 ? 'es' : ''}
+      <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
+        {searchResults.map((result, resultIndex) => {
+          const badge = SOURCE_BADGE[result.source || 'keyword'];
+          const fileTags = tagMap.get(result.filename);
+          return (
+            <div key={resultIndex} className="space-y-1">
+              <div
+                className="flex items-center space-x-3 p-3 rounded-xl hermes-bg-secondary/5 hermes-border/5 hermes-hover:bg-secondary/10 hermes-hover:border/10 transition-all group cursor-pointer"
+                onClick={() => handleFileClick(result.filename)}
+              >
+                {/* Rank number */}
+                <div className="w-6 text-[9px] font-bold hermes-text-muted text-center shrink-0">
+                  {resultIndex + 1}
+                </div>
+                {/* Source badge */}
+                <div className={`text-[7px] font-black px-1.5 py-0.5 rounded shrink-0 ${badge.className}`}>
+                  {badge.label}
+                </div>
+                <div className="flex flex-col truncate flex-1">
+                  <span className="text-xs font-bold hermes-text-normal group-hover:hermes-text-accent transition-colors truncate">
+                    {result.filename}
                   </span>
-                  {tagMap.get(result.filename)?.map((tag, i) => (
-                    <span key={i} className="text-[8px] font-medium px-1.5 py-0.5 rounded hermes-success-bg/15 hermes-success">
-                      {tag}
-                    </span>
-                  ))}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {result.matches.length > 0 && (
+                      <span className="text-[9px] hermes-text-muted font-mono">
+                        {result.matches.length} match{result.matches.length !== 1 ? 'es' : ''}
+                      </span>
+                    )}
+                    {fileTags?.map((tag, i) => (
+                      <span key={i} className="text-[8px] font-medium px-1.5 py-0.5 rounded hermes-success-bg/15 hermes-success">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
+                {result.score != null && (
+                  <div className="text-[9px] font-medium px-2 py-1 rounded hermes-interactive-bg/10 hermes-text-accent" title={`${result.source === 'semantic' ? 'Similarity' : 'BM25'} score`}>
+                    {result.source === 'semantic' ? `${Math.round(result.score * 100)}%` : result.score.toFixed(1)}
+                  </div>
+                )}
               </div>
-              {result.score != null ? (
-                <div className="text-[9px] font-medium px-2 py-1 rounded hermes-interactive-bg/10 hermes-text-accent" title="BM25 relevance score">
-                  {result.score.toFixed(1)}
+
+              {/* Show first few matches as previews */}
+              {result.matches.slice(0, 3).map((match: SearchMatch, matchIndex: number) => (
+                <div
+                  key={matchIndex}
+                  className="ml-8 flex items-start space-x-2 p-2 rounded-lg hermes-bg-secondary/5 cursor-pointer hermes-hover:bg-secondary/10 transition-all"
+                  onClick={() => handleFileClick(result.filename)}
+                >
+                  <span className="text-[8px] hermes-text-muted font-mono mt-0.5 shrink-0">
+                    L{match.line}:
+                  </span>
+                  <span className="text-[9px] hermes-text-muted font-mono truncate">
+                    {match.content.substring(0, 120)}{match.content.length > 120 ? '...' : ''}
+                  </span>
                 </div>
-              ) : (
-                <div className="text-[9px] font-medium px-2 py-1 rounded hermes-info-bg/10 hermes-info">
-                  #{resultIndex + 1}
+              ))}
+
+              {result.matches.length > 3 && (
+                <div className="ml-8 text-[8px] hermes-text-muted italic">
+                  ... and {result.matches.length - 3} more match{result.matches.length - 3 !== 1 ? 'es' : ''}
                 </div>
               )}
             </div>
-
-            {/* Show first few matches as previews */}
-            {result.matches.slice(0, 3).map((match: SearchMatch, matchIndex: number) => (
-              <div
-                key={matchIndex}
-                className="ml-8 flex items-start space-x-2 p-2 rounded-lg hermes-bg-secondary/5 cursor-pointer hermes-hover:bg-secondary/10 transition-all"
-                onClick={() => handleFileClick(result.filename)}
-              >
-                <span className="text-[8px] hermes-text-muted font-mono mt-0.5 shrink-0">
-                  L{match.line}:
-                </span>
-                <span className="text-[9px] hermes-text-muted font-mono truncate">
-                  {match.content.substring(0, 120)}{match.content.length > 120 ? '...' : ''}
-                </span>
-              </div>
-            ))}
-
-            {result.matches.length > 3 && (
-              <div className="ml-8 text-[8px] hermes-text-muted italic">
-                ... and {result.matches.length - 3} more match{result.matches.length - 3 !== 1 ? 'es' : ''}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
       {searchResults.length === 0 && (
         <div className="text-center py-8 hermes-text-muted text-sm">
@@ -651,13 +663,6 @@ const ToolResult: React.FC<ToolResultProps> = ({ toolData, isLast, onImageDownlo
               keyword={toolData.searchKeyword}
               pattern={toolData.filename}
               tagResults={toolData.tagResults}
-            />
-          )}
-
-          {toolData.name === 'search_vault' && toolData.semanticResults && toolData.semanticResults.length > 0 && (
-            <SemanticResultsView
-              semanticResults={toolData.semanticResults}
-              keyword={toolData.searchKeyword}
             />
           )}
 
