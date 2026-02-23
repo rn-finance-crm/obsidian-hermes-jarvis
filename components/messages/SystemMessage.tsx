@@ -546,7 +546,7 @@ interface SystemMessageProps {
 const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLast, className = '', onImageDownload }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [manuallyToggled, setManuallyToggled] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [nowMs, setNowMs] = useState(Date.now());
 
   const isPending = toolData?.status === 'pending';
   const canExpandWhilePending = toolData?.name === 'start_research';
@@ -563,24 +563,31 @@ const SystemMessage: React.FC<SystemMessageProps> = ({ children, toolData, isLas
   };
 
   useEffect(() => {
-    if (!isResearchTool) return;
+    if (!isResearchTool || !isPending) return;
 
+    setNowMs(Date.now());
+    const interval = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [isResearchTool, isPending, toolData?.id]);
+
+  const displayedSeconds = (() => {
     if (isPending) {
-      setElapsedSeconds(0);
-      const interval = window.setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-      }, 1000);
-      return () => window.clearInterval(interval);
+      const startedAt = toolData?.startedAtTimestampMs;
+      if (typeof startedAt === 'number' && Number.isFinite(startedAt)) {
+        return Math.max(1, Math.round((nowMs - startedAt) / 1000));
+      }
+      return 0;
     }
 
     if (toolData?.duration !== undefined) {
-      setElapsedSeconds(Math.max(1, Math.round(toolData.duration / 1000)));
+      return Math.max(1, Math.round(toolData.duration / 1000));
     }
-  }, [isPending, isResearchTool, toolData?.id, toolData?.duration]);
 
-  const displayedSeconds = isPending
-    ? elapsedSeconds
-    : (toolData?.duration !== undefined ? Math.max(1, Math.round(toolData.duration / 1000)) : elapsedSeconds);
+    return 0;
+  })();
 
   useEffect(() => {
     if (isLast && !manuallyToggled && (!isPending || canExpandWhilePending) && hasExpandableContent) {

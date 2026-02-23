@@ -60,6 +60,7 @@ export interface ToolData {
   id?: string;
   name: string;
   filename: string;
+  startedAtTimestampMs?: number;
   status?: 'pending' | 'success' | 'error' | 'search_results';
   oldContent?: string;
   newContent?: string;

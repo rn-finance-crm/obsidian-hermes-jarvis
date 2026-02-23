@@ -1,3 +1,3 @@
 export const PLUGIN_VERSION = "1.4.8";
-export const GIT_BRANCH = "agent/memory-tool-impl";
-export const GIT_COMMIT = "d796e21";
+export const GIT_BRANCH = "development";
+export const GIT_COMMIT = "fa9bc54";

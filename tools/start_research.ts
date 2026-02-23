@@ -466,6 +466,7 @@ const runBackgroundResearch = async (
   await createDirectory(researchFolder);
 
   const timestamp = dateForFilename(startDate);
+  const startedAtTimestampMs = startDate.getTime();
   const filename = `${timestamp}-${slugify(shortName || guessShortName(query)) || 'research'}.md`;
   const fullPath = options?.existingItem?.fullPath || `${researchFolder}/${filename}`;
   const link = toWikiLink(fullPath);
@@ -603,6 +604,7 @@ const runBackgroundResearch = async (
   emitSystem('research started, will get back when the results are in.', {
     name: 'start_research',
     filename: query,
+    startedAtTimestampMs,
     status: 'pending',
     dropdown: true,
     targetPath: fullPath,
@@ -626,6 +628,7 @@ const runBackgroundResearch = async (
           emitSystem('research started, will get back when the results are in.', {
             name: 'start_research',
             filename: query,
+            startedAtTimestampMs,
             status: 'pending',
             dropdown: true,
             targetPath: fullPath,
@@ -733,6 +736,7 @@ const runBackgroundResearch = async (
       emitSystem('research started, will get back when the results are in.', {
         name: 'start_research',
         filename: query,
+        startedAtTimestampMs,
         status: 'pending',
         dropdown: true,
         targetPath: fullPath,
@@ -762,6 +766,7 @@ const runBackgroundResearch = async (
     emitSystem('Research timed out before completion', {
       name: 'start_research',
       filename: query,
+      startedAtTimestampMs,
       status: 'error',
       dropdown: true,
       targetPath: fullPath,
@@ -783,6 +788,7 @@ const runBackgroundResearch = async (
     emitSystem(`Research ended with status: ${finalStatus}`, {
       name: 'start_research',
       filename: query,
+      startedAtTimestampMs,
       status: 'error',
       dropdown: true,
       targetPath: fullPath,
@@ -855,6 +861,7 @@ const runBackgroundResearch = async (
   emitSystem('Research complete', {
     name: 'start_research',
     filename: query,
+    startedAtTimestampMs,
     status: 'success',
     dropdown: true,
     targetPath: fullPath,
@@ -914,6 +921,7 @@ export const resumePendingDeepResearch = async (callbacks: ToolCallbacks): Promi
     callbacks.onSystem('Recovered pending background research task', {
       name: 'start_research',
       filename: safeItem.query,
+      startedAtTimestampMs: new Date(safeItem.startedAt).getTime(),
       status: 'pending',
       dropdown: true,
       targetPath: safeItem.fullPath,
@@ -958,6 +966,7 @@ export const execute = async (args: ToolArgs, callbacks: ToolCallbacks): Promise
   callbacks.onSystem('research started, will get back when the results are in.', {
     name: 'start_research',
     filename: query,
+    startedAtTimestampMs: Date.now(),
     status: 'pending',
     dropdown: true,
     newContent: 'Preparing research stream...'
