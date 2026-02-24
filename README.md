@@ -92,6 +92,14 @@ Until then, the world is going by.
 
 ## 🚀 Installation
 
+### BRAT (Beta, Recommended)
+Currently available in Beta via BRAT:
+
+1. Install **BRAT** from the Community Plugins store.
+2. In BRAT settings, click **Add Beta plugin**.
+3. Enter: `https://github.com/symunona/obsidian-hermes`
+4. Enable **Hermes Voice Assistant** in your Community Plugins list.
+
 ### Manual Installation (why would you do that?)
 1. Download `main.js`, `manifest.json`, and `styles.css` - under releases
 2. Create a folder named `hermes-voice-assistant` in your vault's `.obsidian/plugins/` directory
