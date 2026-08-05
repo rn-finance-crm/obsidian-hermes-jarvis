@@ -17,6 +17,7 @@ export interface HermesSettings {
   hudEnabled: boolean;
   hudTheme: HudTheme;
   hudMode: HudMode;
+  reactiveGraphEnabled: boolean;
 }
 
 export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
@@ -30,6 +31,7 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   hudEnabled: true,
   hudTheme: 'jarvis',
   hudMode: 'strip',
+  reactiveGraphEnabled: true,
 };
 
 const HUD_THEME_LABELS: Record<HudTheme, string> = {
@@ -192,6 +194,20 @@ export class HermesSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             if (this.plugin.settings) {
               this.plugin.settings.hudMode = value as HudMode;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Reactive map')
+      .setDesc('Show a live map of the files this conversation has touched, lighting each one up as it is read or searched. Only conversation files are shown, never the whole vault')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings?.reactiveGraphEnabled ?? DEFAULT_HERMES_SETTINGS.reactiveGraphEnabled)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.reactiveGraphEnabled = value;
               await this.plugin.saveSettings();
             }
           });

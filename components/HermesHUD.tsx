@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { HudState } from '../utils/useHudState';
+import { ConversationGraph, GraphTouch } from '../utils/useConversationGraph';
+import HermesGraph from './HermesGraph';
 
 export type HudTheme = 'jarvis' | 'gold';
 export type HudMode = 'strip' | 'full';
@@ -17,6 +19,9 @@ interface HermesHUDProps {
    */
   volumeRef: React.MutableRefObject<number>;
   onToggleMode: () => void;
+  /** Omitted when the reactive map is switched off in settings. */
+  graph?: ConversationGraph;
+  touch?: GraphTouch;
 }
 
 const STATE_LABEL: Record<HudState, string> = {
@@ -59,6 +64,8 @@ const HermesHUD: React.FC<HermesHUDProps> = ({
   name,
   volumeRef,
   onToggleMode,
+  graph,
+  touch,
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -127,6 +134,8 @@ const HermesHUD: React.FC<HermesHUDProps> = ({
           {STATE_LABEL[state]}
         </div>
       </div>
+
+      {graph && touch && <HermesGraph graph={graph} touch={touch} state={state} />}
     </div>
   );
 };

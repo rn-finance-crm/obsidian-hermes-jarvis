@@ -27,6 +27,8 @@ interface SettingsProps {
   setHudTheme: (theme: HudTheme) => void;
   hudMode: HudMode;
   setHudMode: (mode: HudMode) => void;
+  reactiveGraphEnabled: boolean;
+  setReactiveGraphEnabled: (enabled: boolean) => void;
 }
 
 const HUD_THEMES: { value: HudTheme; label: string }[] = [
@@ -60,7 +62,9 @@ const Settings: React.FC<SettingsProps> = ({
   hudTheme,
   setHudTheme,
   hudMode,
-  setHudMode
+  setHudMode,
+  reactiveGraphEnabled,
+  setReactiveGraphEnabled
 }) => {
   if (!isOpen) return null;
 
@@ -177,6 +181,20 @@ const Settings: React.FC<SettingsProps> = ({
                     ))}
                   </div>
                   <p className="text-xs hermes-text-faint">Clicking the ring switches between these too.</p>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium hermes-text-muted">Reactive map</span>
+                    <p className="text-xs hermes-text-faint mt-1">Lights up files as they are read or searched</p>
+                  </div>
+                  <button
+                    onClick={() => setReactiveGraphEnabled(!reactiveGraphEnabled)}
+                    aria-pressed={reactiveGraphEnabled}
+                    className={`px-4 py-2 rounded-lg border text-sm transition-all ${reactiveGraphEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+                  >
+                    {reactiveGraphEnabled ? 'Enabled' : 'Disabled'}
+                  </button>
                 </div>
               </div>
             )}

@@ -483,3 +483,155 @@
     transform: none;
   }
 }
+
+/* ============================================
+   Reactive conversation map
+   ============================================
+   Only files this conversation has touched, never the whole vault. All
+   motion lives on one transformed <g>, so a forty-node map animates at the
+   same cost as a three-node one. */
+
+.hermes-root .hermes-graph {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hermes-root .hermes-graph.is-empty {
+  min-height: 60px;
+  flex: 0 0 auto;
+}
+
+.hermes-root .hermes-graph-hint {
+  font-family: var(--font-monospace, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: var(--hermes-text-faint);
+  opacity: 0.7;
+}
+
+.hermes-root .hermes-graph-svg {
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  overflow: visible;
+}
+
+/* The living drift. Idle it turns slowly; while a tool runs it speeds up and
+   draws breath, which is what makes the map read as thinking rather than
+   decorative. */
+.hermes-root .hermes-graph-field {
+  transform-origin: 100px 100px;
+  transform-box: view-box;
+  animation: hermes-graph-drift 42s ease-in-out infinite;
+  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hermes-root .hermes-graph[data-graph-state='THINKING'] .hermes-graph-field {
+  animation-duration: 14s;
+  animation-name: hermes-graph-drift-alert;
+}
+
+.hermes-root .hermes-graph-edge {
+  stroke: var(--hud-color, currentColor);
+  stroke-width: 0.6;
+  opacity: 0.16;
+  transition: opacity 600ms ease;
+}
+
+.hermes-root .hermes-graph[data-graph-state='THINKING'] .hermes-graph-edge {
+  opacity: 0.32;
+}
+
+.hermes-root .hermes-graph-node {
+  animation: hermes-graph-bob 7s ease-in-out infinite;
+  transform-origin: 100px 100px;
+  transform-box: view-box;
+}
+
+.hermes-root .hermes-graph-dot {
+  fill: var(--hud-color, currentColor);
+  opacity: 0.55;
+  transition: opacity 700ms ease, r 700ms ease;
+}
+
+.hermes-root .hermes-graph-node[data-node-kind='folder'] .hermes-graph-dot {
+  fill: none;
+  stroke: var(--hud-color, currentColor);
+  stroke-width: 1.2;
+  opacity: 0.4;
+}
+
+/* Halo is invisible until the node is touched; animating opacity and scale
+   only keeps the fade off the layout path entirely. */
+.hermes-root .hermes-graph-halo {
+  fill: var(--hud-color, currentColor);
+  opacity: 0;
+  transform-origin: center;
+  transform-box: fill-box;
+  transform: scale(0.4);
+  pointer-events: none;
+}
+
+.hermes-root .hermes-graph-node.is-hot .hermes-graph-halo {
+  animation: hermes-graph-flare 1.6s ease-out forwards;
+}
+
+.hermes-root .hermes-graph-node.is-hot .hermes-graph-dot {
+  opacity: 1;
+}
+
+@keyframes hermes-graph-drift {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(4deg) scale(1.015); }
+}
+
+/* Pulls inward as it turns — the "drawing breath" moment. */
+@keyframes hermes-graph-drift-alert {
+  0%, 100% { transform: rotate(0deg) scale(1.02); }
+  50% { transform: rotate(-6deg) scale(1.05); }
+}
+
+@keyframes hermes-graph-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.6px); }
+}
+
+@keyframes hermes-graph-flare {
+  0% { opacity: 0.85; transform: scale(0.4); }
+  100% { opacity: 0; transform: scale(2.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-root .hermes-graph-field,
+  .hermes-root .hermes-graph-node {
+    animation: none;
+  }
+
+  .hermes-root .hermes-graph-node.is-hot .hermes-graph-halo {
+    animation: hermes-graph-flare 1.6s linear forwards;
+  }
+}
+
+/* Map placement inside the HUD: a small square beside the readout in the
+   strip, and the dominant element once expanded. */
+.hermes-root .hermes-hud[data-hud-mode='strip'] .hermes-graph {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  margin-left: auto;
+}
+
+.hermes-root .hermes-hud[data-hud-mode='strip'] .hermes-graph.is-empty {
+  display: none;
+}
+
+.hermes-root .hermes-hud[data-hud-mode='full'] .hermes-graph {
+  width: 100%;
+  max-width: 460px;
+  align-self: center;
+}

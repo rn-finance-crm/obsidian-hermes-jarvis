@@ -13,6 +13,7 @@ import { persistConversationHistory, PersistenceOptions } from './utils/historyP
 import { getErrorMessage } from './utils/getErrorMessage';
 import { useHudState } from './utils/useHudState';
 import { DEFAULT_ASSISTANT_NAME, resolveAssistantName } from './utils/assistantIdentity';
+import { useConversationGraph } from './utils/useConversationGraph';
 
 // Components
 import Header from './components/Header';
@@ -78,6 +79,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [hudEnabled, setHudEnabled] = useState<boolean>(() => saved.hudEnabled ?? true);
   const [hudTheme, setHudTheme] = useState<HudTheme>(() => saved.hudTheme || 'jarvis');
   const [hudMode, setHudMode] = useState<HudMode>(() => saved.hudMode || 'strip');
+  const [reactiveGraphEnabled, setReactiveGraphEnabled] = useState<boolean>(() => saved.reactiveGraphEnabled ?? true);
   const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
   
   // Topic ID for grouping messages - generated on init and on topic_switch
@@ -91,6 +93,10 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
 
   // HUD display state, derived from session state rather than tracked separately
   const hudState = useHudState({ status, activeSpeaker, transcripts });
+
+  // Map of files this conversation has touched, read from the same tool results
+  // the chat already renders. Nothing in the tool layer is involved.
+  const { graph, touch } = useConversationGraph(transcripts);
 
   // Mirror of micVolume for the HUD. Passing the value as a prop would re-render
   // the HUD at audio rate; the HUD reads this ref in an animation frame instead.
@@ -342,7 +348,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       assistantName,
       hudEnabled,
       hudTheme,
-      hudMode
+      hudMode,
+      reactiveGraphEnabled
     });
 
     // The HUD can also be changed from Obsidian's own settings tab, which saves
@@ -354,8 +361,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       plugin.settings.hudEnabled = hudEnabled;
       plugin.settings.hudTheme = hudTheme;
       plugin.settings.hudMode = hudMode;
+      plugin.settings.reactiveGraphEnabled = reactiveGraphEnabled;
     }
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, assistantName, hudEnabled, hudTheme, hudMode]);
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, assistantName, hudEnabled, hudTheme, hudMode, reactiveGraphEnabled]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -397,6 +405,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setHudEnabled(settings.hudEnabled ?? true);
       setHudTheme(settings.hudTheme || 'jarvis');
       setHudMode(settings.hudMode || 'strip');
+      setReactiveGraphEnabled(settings.reactiveGraphEnabled ?? true);
 
       // Check if API key was added
       const activeKey = (settings.manualApiKey || '').trim();
@@ -814,6 +823,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             setHudTheme={setHudTheme}
             hudMode={hudMode}
             setHudMode={setHudMode}
+            reactiveGraphEnabled={reactiveGraphEnabled}
+            setReactiveGraphEnabled={setReactiveGraphEnabled}
           />
           
           <Header 
@@ -836,6 +847,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
               name={resolveAssistantName(assistantName)}
               volumeRef={micVolumeRef}
               onToggleMode={toggleHudMode}
+              graph={reactiveGraphEnabled ? graph : undefined}
+              touch={reactiveGraphEnabled ? touch : undefined}
             />
           )}
 

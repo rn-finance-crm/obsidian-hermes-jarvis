@@ -139,6 +139,7 @@ export interface AppSettings {
   hudEnabled?: boolean;
   hudTheme?: 'jarvis' | 'gold';
   hudMode?: 'strip' | 'full';
+  reactiveGraphEnabled?: boolean;
 }
 
 export interface VoiceAssistantCallbacks {
