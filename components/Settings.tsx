@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { HudMode, HudTheme } from './HermesHUD';
 
 const AVAILABLE_VOICES = ['Default', 'Professional', 'Friendly', 'Creative', 'Technical'];
 
@@ -17,7 +18,23 @@ interface SettingsProps {
   serperApiKey: string;
   setSerperApiKey: (key: string) => void;
   onUpdateApiKey: () => void;
+  hudEnabled: boolean;
+  setHudEnabled: (enabled: boolean) => void;
+  hudTheme: HudTheme;
+  setHudTheme: (theme: HudTheme) => void;
+  hudMode: HudMode;
+  setHudMode: (mode: HudMode) => void;
 }
+
+const HUD_THEMES: { value: HudTheme; label: string }[] = [
+  { value: 'jarvis', label: 'J.A.R.V.I.S Cyan' },
+  { value: 'gold', label: 'RN Finance Gold' }
+];
+
+const HUD_MODES: { value: HudMode; label: string }[] = [
+  { value: 'strip', label: 'Compact strip' },
+  { value: 'full', label: 'Full panel' }
+];
 
 const Settings: React.FC<SettingsProps> = ({
   isOpen,
@@ -32,7 +49,13 @@ const Settings: React.FC<SettingsProps> = ({
   setManualApiKey,
   serperApiKey,
   setSerperApiKey,
-  onUpdateApiKey
+  onUpdateApiKey,
+  hudEnabled,
+  setHudEnabled,
+  hudTheme,
+  setHudTheme,
+  hudMode,
+  setHudMode
 }) => {
   if (!isOpen) return null;
 
@@ -87,6 +110,57 @@ const Settings: React.FC<SettingsProps> = ({
               placeholder="Define specific behaviors or rules for Hermes..."
               className="w-full h-20 hermes-bg-tertiary hermes-border/10 rounded-lg p-4 text-sm hermes-text-normal outline-none hermes-focus:border/50 transition-all font-mono placeholder:hermes-text-faint"
             />
+          </div>
+
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium hermes-text-normal block">HUD Display</label>
+                <p className="text-xs hermes-text-faint mt-1">Animated status ring above the conversation</p>
+              </div>
+              <button
+                onClick={() => setHudEnabled(!hudEnabled)}
+                aria-pressed={hudEnabled}
+                className={`px-4 py-2 rounded-lg border text-sm transition-all ${hudEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+              >
+                {hudEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            {hudEnabled && (
+              <div className="grid gap-4 pt-2">
+                <div className="space-y-2">
+                  <span className="text-sm font-medium hermes-text-muted">Colour scheme</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {HUD_THEMES.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setHudTheme(value)}
+                        className={`px-4 py-2 rounded-lg border text-sm transition-all ${hudTheme === value ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-sm font-medium hermes-text-muted">Layout</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {HUD_MODES.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setHudMode(value)}
+                        className={`px-4 py-2 rounded-lg border text-sm transition-all ${hudMode === value ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs hermes-text-faint">Clicking the ring switches between these too.</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4 pt-8 hermes-border-t">

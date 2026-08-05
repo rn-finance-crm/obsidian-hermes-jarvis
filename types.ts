@@ -135,6 +135,9 @@ export interface AppSettings {
   transcripts?: TranscriptionEntry[];
   totalTokens?: number;
   chatHistory?: string[];
+  hudEnabled?: boolean;
+  hudTheme?: 'jarvis' | 'gold';
+  hudMode?: 'strip' | 'full';
 }
 
 export interface VoiceAssistantCallbacks {

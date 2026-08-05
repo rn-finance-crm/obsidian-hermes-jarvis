@@ -10,9 +10,11 @@ import { isObsidian } from './utils/environment';
 import { executeCommand } from './services/commands';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
+import { useHudState } from './utils/useHudState';
 
 // Components
 import Header from './components/Header';
+import HermesHUD, { HudMode, HudTheme } from './components/HermesHUD';
 import Settings from './components/Settings';
 import MainWindow from './components/MainWindow';
 import InputBar from './components/InputBar';
@@ -70,6 +72,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [totalTokens, setTotalTokens] = useState<number>(() => saved.totalTokens || 0);
   const [usage, setUsage] = useState<UsageMetadata>({ totalTokenCount: saved.totalTokens || 0 });
   const [fileCount, setFileCount] = useState<number>(0);
+  const [hudEnabled, setHudEnabled] = useState<boolean>(() => saved.hudEnabled ?? true);
+  const [hudTheme, setHudTheme] = useState<HudTheme>(() => saved.hudTheme || 'jarvis');
+  const [hudMode, setHudMode] = useState<HudMode>(() => saved.hudMode || 'strip');
   const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
   
   // Topic ID for grouping messages - generated on init and on topic_switch
@@ -80,6 +85,20 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   useEffect(() => {
     currentTopicIdRef.current = currentTopicId;
   }, [currentTopicId]);
+
+  // HUD display state, derived from session state rather than tracked separately
+  const hudState = useHudState({ status, activeSpeaker, transcripts });
+
+  // Mirror of micVolume for the HUD. Passing the value as a prop would re-render
+  // the HUD at audio rate; the HUD reads this ref in an animation frame instead.
+  const micVolumeRef = useRef<number>(0);
+  useEffect(() => {
+    micVolumeRef.current = micVolume;
+  }, [micVolume]);
+
+  const toggleHudMode = useCallback(() => {
+    setHudMode(prev => (prev === 'strip' ? 'full' : 'strip'));
+  }, []);
 
   // Watermarks for context sync between voice and text interfaces
   const [lastVoiceSyncIndex, setLastVoiceSyncIndex] = useState<number>(0);
@@ -316,9 +335,12 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       serperApiKey,
       currentFolder,
       currentNote,
-      totalTokens
+      totalTokens,
+      hudEnabled,
+      hudTheme,
+      hudMode
     });
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens]);
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, hudEnabled, hudTheme, hudMode]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -765,6 +787,12 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             serperApiKey={serperApiKey}
             setSerperApiKey={setSerperApiKey}
             onUpdateApiKey={() => (window as { aistudio?: { openSelectKey?: () => void } }).aistudio?.openSelectKey()}
+            hudEnabled={hudEnabled}
+            setHudEnabled={setHudEnabled}
+            hudTheme={hudTheme}
+            setHudTheme={setHudTheme}
+            hudMode={hudMode}
+            setHudMode={setHudMode}
           />
           
           <Header 
@@ -778,11 +806,21 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             onResetConversation={resetConversation}
             transcripts={transcripts}
           />
-          
+
+          {hudEnabled && (
+            <HermesHUD
+              state={hudState}
+              theme={hudTheme}
+              mode={hudMode}
+              volumeRef={micVolumeRef}
+              onToggleMode={toggleHudMode}
+            />
+          )}
+
           {historyOpen ? (
             <History isActive={true} onRestoreConversation={restoreConversation} />
-          ) : (
-            <MainWindow 
+          ) : hudEnabled && hudMode === 'full' ? null : (
+            <MainWindow
               showKernel={showKernel}
               transcripts={transcripts} 
               hasSavedConversation={hasSavedConversation}
