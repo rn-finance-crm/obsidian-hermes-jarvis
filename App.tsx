@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import type { Plugin } from 'obsidian';
 import { LogEntry, TranscriptionEntry, ConnectionStatus, ToolData, UsageMetadata, AppSettings, ImageSearchResult } from './types';
 import { Content } from '@google/genai';
 import { initFileSystem, listDirectory } from './services/vaultOperations';
-import { saveAppSettings, loadAppSettings, saveChatHistory, loadChatHistory, reloadAppSettings } from './persistence/persistence';
+import { saveAppSettings, loadAppSettings, saveChatHistory, loadChatHistory, reloadAppSettings, getObsidianPlugin } from './persistence/persistence';
 import { GeminiVoiceAssistant } from './services/voiceInterface';
 import { GeminiTextInterface } from './services/textInterface';
 import { DEFAULT_SYSTEM_INSTRUCTION } from './utils/defaultPrompt';
@@ -340,6 +341,16 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       hudTheme,
       hudMode
     });
+
+    // The HUD can also be changed from Obsidian's own settings tab, which saves
+    // the plugin's in-memory settings object. Mirror our values into it so that
+    // a later save from that tab does not write back a stale HUD state.
+    const plugin = getObsidianPlugin() as (Plugin & { settings?: AppSettings }) | null;
+    if (plugin?.settings) {
+      plugin.settings.hudEnabled = hudEnabled;
+      plugin.settings.hudTheme = hudTheme;
+      plugin.settings.hudMode = hudMode;
+    }
   }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, hudEnabled, hudTheme, hudMode]);
 
   // Check API key and show setup screen if needed
@@ -378,7 +389,10 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setSystemInstruction(settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION);
       setManualApiKey(settings.manualApiKey || '');
       setSerperApiKey(settings.serperApiKey || '');
-      
+      setHudEnabled(settings.hudEnabled ?? true);
+      setHudTheme(settings.hudTheme || 'jarvis');
+      setHudMode(settings.hudMode || 'strip');
+
       // Check if API key was added
       const activeKey = (settings.manualApiKey || '').trim();
       if (activeKey && showApiKeySetup) {

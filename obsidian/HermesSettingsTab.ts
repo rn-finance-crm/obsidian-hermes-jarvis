@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type HermesPlugin from '../main';
 import { DEFAULT_SYSTEM_INSTRUCTION } from '../utils/defaultPrompt';
+import type { HudMode, HudTheme } from '../components/HermesHUD';
 
 const AVAILABLE_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Zephyr'];
 
@@ -11,6 +12,9 @@ export interface HermesSettings {
   manualApiKey: string;
   serperApiKey: string;
   chatHistoryFolder: string;
+  hudEnabled: boolean;
+  hudTheme: HudTheme;
+  hudMode: HudMode;
 }
 
 export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
@@ -20,6 +24,19 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   manualApiKey: '',
   serperApiKey: '',
   chatHistoryFolder: 'chat-history',
+  hudEnabled: true,
+  hudTheme: 'jarvis',
+  hudMode: 'strip',
+};
+
+const HUD_THEME_LABELS: Record<HudTheme, string> = {
+  jarvis: 'J.A.R.V.I.S cyan',
+  gold: 'RN Finance gold',
+};
+
+const HUD_MODE_LABELS: Record<HudMode, string> = {
+  strip: 'Compact strip',
+  full: 'Full panel',
 };
 
 export class HermesSettingsTab extends PluginSettingTab {
@@ -106,6 +123,59 @@ export class HermesSettingsTab extends PluginSettingTab {
           });
         text.inputEl.rows = 6;
         text.inputEl.cols = 50;
+      });
+
+    // HUD Section
+    new Setting(containerEl)
+      .setName('HUD display')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setName('Show HUD')
+      .setDesc('Animated status ring above the conversation, showing whether Hermes is listening, thinking or speaking')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings?.hudEnabled ?? DEFAULT_HERMES_SETTINGS.hudEnabled)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.hudEnabled = value;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('HUD colour scheme')
+      .setDesc('Palette used for the ring and status text')
+      .addDropdown((dropdown) => {
+        (Object.keys(HUD_THEME_LABELS) as HudTheme[]).forEach((theme) => {
+          dropdown.addOption(theme, HUD_THEME_LABELS[theme]);
+        });
+        dropdown
+          .setValue(this.plugin.settings?.hudTheme || DEFAULT_HERMES_SETTINGS.hudTheme)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.hudTheme = value as HudTheme;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('HUD layout')
+      .setDesc('Compact strip keeps the conversation visible; full panel replaces it. Clicking the ring switches between them too')
+      .addDropdown((dropdown) => {
+        (Object.keys(HUD_MODE_LABELS) as HudMode[]).forEach((mode) => {
+          dropdown.addOption(mode, HUD_MODE_LABELS[mode]);
+        });
+        dropdown
+          .setValue(this.plugin.settings?.hudMode || DEFAULT_HERMES_SETTINGS.hudMode)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.hudMode = value as HudMode;
+              await this.plugin.saveSettings();
+            }
+          });
       });
 
     // Chat History Folder
