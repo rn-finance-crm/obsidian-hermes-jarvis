@@ -135,7 +135,9 @@ const HermesHUD: React.FC<HermesHUDProps> = ({
         </div>
       </div>
 
-      {graph && touch && <HermesGraph graph={graph} touch={touch} state={state} />}
+      {graph && touch && (
+        <HermesGraph graph={graph} touch={touch} state={state} showLabels={mode === 'full'} />
+      )}
     </div>
   );
 };

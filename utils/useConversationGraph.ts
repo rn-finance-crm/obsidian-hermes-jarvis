@@ -31,10 +31,62 @@ export interface GraphTouch {
  */
 const MAX_FILE_NODES = 40;
 
-/** Layout constants, in the 200x200 user space of the SVG. */
+/** Layout constants, in the user space the view is later fitted to. */
 const CENTRE = 100;
-const FOLDER_RADIUS = 44;
-const FILE_RADIUS = 23;
+/** Smallest folder ring; grows with folder count so clusters never collide. */
+const FOLDER_RADIUS_MIN = 54;
+/**
+ * Clear space demanded between neighbouring folder clusters. Generous because
+ * a node's label reaches well past the node itself.
+ */
+const FOLDER_GAP = 46;
+/**
+ * Files orbit their folder at this distance. It has to clear the folder's own
+ * label, so it is considerably wider than the node itself.
+ */
+const FILE_RADIUS = 32;
+/** Extra orbit room per file past the third, so busy folders do not bunch up. */
+const FILE_RADIUS_STEP = 2.6;
+const MAX_FILE_RADIUS = 58;
+/**
+ * Rotates each orbit off its folder's own bearing. Without it a folder and its
+ * files land on one straight line through the centre, which reads as a stick
+ * rather than a cluster.
+ */
+const ORBIT_OFFSET = Math.PI / 4;
+/** Half-angle between the two files of a pair, chosen to form a clear triangle. */
+const PAIR_SPREAD = Math.PI / 3;
+
+/**
+ * Angle of a file around its folder. One or two files are placed as a triangle
+ * with their folder; three or more take an even ring.
+ */
+/** Orbit radius for a folder holding `count` files. */
+const orbitRadius = (count: number): number =>
+  Math.min(MAX_FILE_RADIUS, FILE_RADIUS + Math.max(0, count - 3) * FILE_RADIUS_STEP);
+
+/**
+ * Radius of the ring the folders sit on, solved from the chord between
+ * neighbours so that adjacent clusters always keep `FOLDER_GAP` between them
+ * however many folders there are.
+ */
+const folderRingRadius = (folderCount: number, widestOrbit: number): number => {
+  if (folderCount < 2) return 0;
+
+  const requiredChord = widestOrbit * 2 + FOLDER_GAP;
+  const solved = requiredChord / (2 * Math.sin(Math.PI / folderCount));
+
+  return Math.max(FOLDER_RADIUS_MIN, solved);
+};
+
+const fileAngle = (index: number, count: number, folderAngle: number): number => {
+  const base = folderAngle + ORBIT_OFFSET;
+
+  if (count === 1) return base;
+  if (count === 2) return base + (index === 0 ? -PAIR_SPREAD : PAIR_SPREAD);
+
+  return base + (index / count) * Math.PI * 2;
+};
 
 const ROOT_LABEL = 'vault';
 
@@ -175,14 +227,19 @@ export const useConversationGraph = (transcripts: TranscriptionEntry[]) => {
     const nodes: GraphNode[] = [];
     const edges: ConversationGraph['edges'] = [];
 
+    const widestOrbit = Math.max(
+      ...folders.map((folder) => orbitRadius((byFolder.get(folder) ?? []).length)),
+    );
+    const ringRadius = folderRingRadius(folders.length, widestOrbit);
+
     folders.forEach((folder, folderIndex) => {
       const group = byFolder.get(folder) ?? [];
       const id = folderIdFor(folder);
 
       // A single folder sits at the centre; several spread around a ring.
       const folderAngle = (folderIndex / folders.length) * Math.PI * 2 - Math.PI / 2;
-      const folderX = folders.length === 1 ? CENTRE : CENTRE + Math.cos(folderAngle) * FOLDER_RADIUS;
-      const folderY = folders.length === 1 ? CENTRE : CENTRE + Math.sin(folderAngle) * FOLDER_RADIUS;
+      const folderX = CENTRE + Math.cos(folderAngle) * ringRadius;
+      const folderY = CENTRE + Math.sin(folderAngle) * ringRadius;
 
       nodes.push({
         id,
@@ -197,9 +254,8 @@ export const useConversationGraph = (transcripts: TranscriptionEntry[]) => {
         .slice()
         .sort((a, b) => a.path.localeCompare(b.path))
         .forEach((file, fileIndex) => {
-          const spread = Math.max(group.length, 3);
-          const angle = (fileIndex / spread) * Math.PI * 2 + folderAngle;
-          const radius = FILE_RADIUS * (group.length > 6 ? 1.35 : 1);
+          const angle = fileAngle(fileIndex, group.length, folderAngle);
+          const radius = orbitRadius(group.length);
 
           nodes.push({
             id: file.path,

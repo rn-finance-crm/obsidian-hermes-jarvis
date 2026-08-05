@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { HudState } from '../utils/useHudState';
 import { ConversationGraph, GraphNode, GraphTouch } from '../utils/useConversationGraph';
 
@@ -6,14 +6,70 @@ interface HermesGraphProps {
   graph: ConversationGraph;
   touch: GraphTouch;
   state: HudState;
+  /** Labels only make sense once the map has room for them. */
+  showLabels: boolean;
 }
 
 /** How long a node stays lit after a tool touches it. */
 const GLOW_MS = 1600;
 
-const HermesGraph: React.FC<HermesGraphProps> = ({ graph, touch, state }) => {
+/**
+ * The layout works in a fixed coordinate space, but the map has to read the
+ * same whether it holds three nodes or forty. So rather than a fixed viewBox,
+ * the view is fitted to the nodes: a small graph zooms in to fill the panel
+ * instead of huddling in the middle of it.
+ */
+/** Room left around the nodes; labels need most of it, so it drops without them. */
+const FIT_PADDING_LABELLED = 22;
+const FIT_PADDING_BARE = 10;
+const MIN_VIEW = 82;
+const MAX_VIEW = 250;
+
+/**
+ * Fraction of the view size. Because the view is fitted to the nodes, this
+ * keeps labels at a constant on-screen size no matter how many there are.
+ */
+const LABEL_SCALE = 0.038;
+
+/** Long names outgrow their cluster and cross neighbouring nodes. */
+const MAX_LABEL_CHARS = 13;
+
+/** Past this many nodes labels collide into noise, so they are dropped. */
+const MAX_LABELLED_NODES = 20;
+
+const truncate = (label: string): string =>
+  label.length > MAX_LABEL_CHARS ? `${label.slice(0, MAX_LABEL_CHARS - 1)}…` : label;
+
+const HermesGraph: React.FC<HermesGraphProps> = ({ graph, touch, state, showLabels }) => {
   const groupRef = useRef<SVGGElement>(null);
   const timers = useRef<Map<string, number>>(new Map());
+
+  const withLabels = showLabels && graph.nodes.length <= MAX_LABELLED_NODES;
+
+  const view = useMemo(() => {
+    if (graph.nodes.length === 0) {
+      return { viewBox: '0 0 200 200', fontSize: 200 * LABEL_SCALE };
+    }
+
+    const padding = withLabels ? FIT_PADDING_LABELLED : FIT_PADDING_BARE;
+
+    const xs = graph.nodes.map((node) => node.x);
+    const ys = graph.nodes.map((node) => node.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+
+    const span = Math.max(maxX - minX, maxY - minY);
+    const size = Math.min(MAX_VIEW, Math.max(MIN_VIEW, span + padding * 2));
+    const centreX = (minX + maxX) / 2;
+    const centreY = (minY + maxY) / 2;
+
+    return {
+      viewBox: `${centreX - size / 2} ${centreY - size / 2} ${size} ${size}`,
+      fontSize: size * LABEL_SCALE,
+    };
+  }, [graph.nodes, withLabels]);
 
   // Lighting a node adds a class and removes it on a timer, deliberately
   // bypassing React: a decaying glow must not re-render the whole map, and
@@ -66,7 +122,7 @@ const HermesGraph: React.FC<HermesGraphProps> = ({ graph, touch, state }) => {
 
   return (
     <div className="hermes-graph" data-graph-state={state}>
-      <svg className="hermes-graph-svg" viewBox="0 0 200 200" aria-hidden="true">
+      <svg className="hermes-graph-svg" viewBox={view.viewBox} aria-hidden="true">
         {/* One transformed group carries the drift and the "inhale", so the
             motion costs the same whether there are three nodes or forty. */}
         <g ref={groupRef} className="hermes-graph-field">
@@ -109,6 +165,18 @@ const HermesGraph: React.FC<HermesGraphProps> = ({ graph, touch, state }) => {
                 cy={node.y}
                 r={node.kind === 'folder' ? 4 : 2.6}
               />
+              {withLabels && (
+                <text
+                  className="hermes-graph-label"
+                  x={node.x}
+                  // Folder labels sit above the node and file labels below, so
+                  // a folder's own caption cannot collide with its files'.
+                  y={node.y + (node.kind === 'folder' ? -9 : 10)}
+                  fontSize={view.fontSize}
+                >
+                  {truncate(node.label)}
+                </text>
+              )}
               <title>{node.label}</title>
             </g>
           ))}

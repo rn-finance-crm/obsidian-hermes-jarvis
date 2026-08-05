@@ -525,7 +525,9 @@
    draws breath, which is what makes the map read as thinking rather than
    decorative. */
 .hermes-root .hermes-graph-field {
-  transform-origin: 100px 100px;
+  /* Percentage, not a fixed point: the viewBox is fitted to the nodes and so
+     moves with them, and a hardcoded centre would swing the map off-axis. */
+  transform-origin: 50% 50%;
   transform-box: view-box;
   animation: hermes-graph-drift 42s ease-in-out infinite;
   transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -549,8 +551,26 @@
 
 .hermes-root .hermes-graph-node {
   animation: hermes-graph-bob 7s ease-in-out infinite;
-  transform-origin: 100px 100px;
-  transform-box: view-box;
+}
+
+.hermes-root .hermes-graph-label {
+  fill: var(--hermes-text-muted);
+  font-family: var(--font-monospace, ui-monospace, monospace);
+  text-anchor: middle;
+  opacity: 0.75;
+  pointer-events: none;
+  transition: fill 500ms ease, opacity 500ms ease;
+}
+
+.hermes-root .hermes-graph-node[data-node-kind='folder'] .hermes-graph-label {
+  fill: var(--hermes-text-faint);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hermes-root .hermes-graph-node.is-hot .hermes-graph-label {
+  fill: var(--hud-color, currentColor);
+  opacity: 1;
 }
 
 .hermes-root .hermes-graph-dot {
