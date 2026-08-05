@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { HudMode, HudTheme } from './HermesHUD';
+import { DEFAULT_ASSISTANT_NAME } from '../utils/assistantIdentity';
 
 const AVAILABLE_VOICES = ['Default', 'Professional', 'Friendly', 'Creative', 'Technical'];
 
@@ -18,6 +19,8 @@ interface SettingsProps {
   serperApiKey: string;
   setSerperApiKey: (key: string) => void;
   onUpdateApiKey: () => void;
+  assistantName: string;
+  setAssistantName: (name: string) => void;
   hudEnabled: boolean;
   setHudEnabled: (enabled: boolean) => void;
   hudTheme: HudTheme;
@@ -50,6 +53,8 @@ const Settings: React.FC<SettingsProps> = ({
   serperApiKey,
   setSerperApiKey,
   onUpdateApiKey,
+  assistantName,
+  setAssistantName,
   hudEnabled,
   setHudEnabled,
   hudTheme,
@@ -110,6 +115,20 @@ const Settings: React.FC<SettingsProps> = ({
               placeholder="Define specific behaviors or rules for Hermes..."
               className="w-full h-20 hermes-bg-tertiary hermes-border/10 rounded-lg p-4 text-sm hermes-text-normal outline-none hermes-focus:border/50 transition-all font-mono placeholder:hermes-text-faint"
             />
+          </div>
+
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <label className="text-sm font-medium hermes-text-normal block">Assistant Name</label>
+            <input
+              type="text"
+              value={assistantName}
+              onChange={(e) => setAssistantName(e.target.value)}
+              placeholder={DEFAULT_ASSISTANT_NAME}
+              className="w-full hermes-bg-tertiary hermes-border/10 rounded-lg px-4 py-3 text-sm hermes-text-normal outline-none hermes-focus:border/50 transition-all"
+            />
+            <p className="text-xs hermes-text-faint">
+              It answers to this name in any language and will not correct you about it. Takes effect on the next session.
+            </p>
           </div>
 
           <div className="space-y-4 pt-8 hermes-border-t">

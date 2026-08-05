@@ -2,6 +2,7 @@ import { GoogleGenAI, Content, Part, FunctionCall } from '@google/genai';
 import { AppSettings, UsageMetadata, ToolData, LogEntry } from '../types';
 import { COMMAND_DECLARATIONS, executeCommand } from './commands';
 import { withRetry, RetryCounter } from '../utils/retryUtils';
+import { buildIdentityInstruction } from '../utils/assistantIdentity';
 
 export interface TextInterfaceCallbacks {
   onLog: (message: string, type: LogEntry['type'], duration?: number, errorDetails?: LogEntry['errorDetails']) => void;
@@ -42,7 +43,8 @@ CURRENT_CONTEXT:
 Current Folder Path: ${this.currentFolder}
 Current Note Name: ${this.currentNote || 'No note currently selected'}
 `;
-    this.systemInstruction = `${settings.systemInstruction}\n${contextString}\n\n${settings.customContext}`.trim();
+    const identitySection = buildIdentityInstruction(settings.assistantName);
+    this.systemInstruction = `${settings.systemInstruction}\n\n${identitySection}\n${contextString}\n\n${settings.customContext}`.trim();
 
     this.callbacks.onLog('Text interface ready.', 'info');
   }

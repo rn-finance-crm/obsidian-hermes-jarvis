@@ -8,6 +8,8 @@ interface HermesHUDProps {
   state: HudState;
   theme: HudTheme;
   mode: HudMode;
+  /** Shown in the readout; the assistant answers to this name too. */
+  name: string;
   /**
    * Mic amplitude as a ref rather than a prop value: it updates at audio rate,
    * and passing it as a prop would re-render this component tens of times a
@@ -54,6 +56,7 @@ const HermesHUD: React.FC<HermesHUDProps> = ({
   state,
   theme,
   mode,
+  name,
   volumeRef,
   onToggleMode,
 }) => {
@@ -118,7 +121,7 @@ const HermesHUD: React.FC<HermesHUDProps> = ({
       </button>
 
       <div className="hermes-hud-readout">
-        <div className="hermes-hud-title">HERMES</div>
+        <div className="hermes-hud-title">{name.toUpperCase()}</div>
         <div className="hermes-hud-state">
           <span className="hermes-hud-dot" aria-hidden="true" />
           {STATE_LABEL[state]}

@@ -12,6 +12,7 @@ import { executeCommand } from './services/commands';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
 import { useHudState } from './utils/useHudState';
+import { DEFAULT_ASSISTANT_NAME, resolveAssistantName } from './utils/assistantIdentity';
 
 // Components
 import Header from './components/Header';
@@ -73,6 +74,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [totalTokens, setTotalTokens] = useState<number>(() => saved.totalTokens || 0);
   const [usage, setUsage] = useState<UsageMetadata>({ totalTokenCount: saved.totalTokens || 0 });
   const [fileCount, setFileCount] = useState<number>(0);
+  const [assistantName, setAssistantName] = useState<string>(() => saved.assistantName || DEFAULT_ASSISTANT_NAME);
   const [hudEnabled, setHudEnabled] = useState<boolean>(() => saved.hudEnabled ?? true);
   const [hudTheme, setHudTheme] = useState<HudTheme>(() => saved.hudTheme || 'jarvis');
   const [hudMode, setHudMode] = useState<HudMode>(() => saved.hudMode || 'strip');
@@ -337,6 +339,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       currentFolder,
       currentNote,
       totalTokens,
+      assistantName,
       hudEnabled,
       hudTheme,
       hudMode
@@ -347,11 +350,12 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
     // a later save from that tab does not write back a stale HUD state.
     const plugin = getObsidianPlugin() as (Plugin & { settings?: AppSettings }) | null;
     if (plugin?.settings) {
+      plugin.settings.assistantName = assistantName;
       plugin.settings.hudEnabled = hudEnabled;
       plugin.settings.hudTheme = hudTheme;
       plugin.settings.hudMode = hudMode;
     }
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, hudEnabled, hudTheme, hudMode]);
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, assistantName, hudEnabled, hudTheme, hudMode]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -389,6 +393,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setSystemInstruction(settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION);
       setManualApiKey(settings.manualApiKey || '');
       setSerperApiKey(settings.serperApiKey || '');
+      setAssistantName(settings.assistantName || DEFAULT_ASSISTANT_NAME);
       setHudEnabled(settings.hudEnabled ?? true);
       setHudTheme(settings.hudTheme || 'jarvis');
       setHudMode(settings.hudMode || 'strip');
@@ -801,6 +806,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             serperApiKey={serperApiKey}
             setSerperApiKey={setSerperApiKey}
             onUpdateApiKey={() => (window as { aistudio?: { openSelectKey?: () => void } }).aistudio?.openSelectKey()}
+            assistantName={assistantName}
+            setAssistantName={setAssistantName}
             hudEnabled={hudEnabled}
             setHudEnabled={setHudEnabled}
             hudTheme={hudTheme}
@@ -826,6 +833,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
               state={hudState}
               theme={hudTheme}
               mode={hudMode}
+              name={resolveAssistantName(assistantName)}
               volumeRef={micVolumeRef}
               onToggleMode={toggleHudMode}
             />

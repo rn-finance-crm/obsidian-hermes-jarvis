@@ -2,6 +2,7 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import type HermesPlugin from '../main';
 import { DEFAULT_SYSTEM_INSTRUCTION } from '../utils/defaultPrompt';
 import type { HudMode, HudTheme } from '../components/HermesHUD';
+import { DEFAULT_ASSISTANT_NAME } from '../utils/assistantIdentity';
 
 const AVAILABLE_VOICES = ['Kore', 'Puck', 'Charon', 'Fenrir', 'Zephyr'];
 
@@ -12,6 +13,7 @@ export interface HermesSettings {
   manualApiKey: string;
   serperApiKey: string;
   chatHistoryFolder: string;
+  assistantName: string;
   hudEnabled: boolean;
   hudTheme: HudTheme;
   hudMode: HudMode;
@@ -24,6 +26,7 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   manualApiKey: '',
   serperApiKey: '',
   chatHistoryFolder: 'chat-history',
+  assistantName: DEFAULT_ASSISTANT_NAME,
   hudEnabled: true,
   hudTheme: 'jarvis',
   hudMode: 'strip',
@@ -123,6 +126,22 @@ export class HermesSettingsTab extends PluginSettingTab {
           });
         text.inputEl.rows = 6;
         text.inputEl.cols = 50;
+      });
+
+    // Assistant name
+    new Setting(containerEl)
+      .setName('Assistant name')
+      .setDesc('What you call the assistant. It answers to this name in any language and will not correct you about it. Shown on the HUD too')
+      .addText((text) => {
+        text
+          .setPlaceholder(DEFAULT_ASSISTANT_NAME)
+          .setValue(this.plugin.settings?.assistantName || DEFAULT_ASSISTANT_NAME)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.assistantName = value;
+              await this.plugin.saveSettings();
+            }
+          });
       });
 
     // HUD Section
