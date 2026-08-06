@@ -194,7 +194,8 @@ const Settings: React.FC<SettingsProps> = ({
               <div>
                 <label className="text-sm font-medium hermes-text-normal block">Stir the graph while thinking</label>
                 <p className="text-xs hermes-text-faint mt-1">
-                  Sets Obsidian&apos;s graph view in motion while a tool runs, using the graph&apos;s own physics
+                  Sets Obsidian&apos;s graph view in motion while a tool runs. This moves the nodes, and
+                  Obsidian does not save their positions &mdash; pin the ones you want to stay put.
                 </p>
               </div>
               <button

@@ -79,7 +79,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [hudEnabled, setHudEnabled] = useState<boolean>(() => saved.hudEnabled ?? true);
   const [hudTheme, setHudTheme] = useState<HudTheme>(() => saved.hudTheme || 'jarvis');
   const [hudMode, setHudMode] = useState<HudMode>(() => saved.hudMode || 'strip');
-  const [graphPulseEnabled, setGraphPulseEnabled] = useState<boolean>(() => saved.graphPulseEnabled ?? true);
+  // Off by default: stirring the graph reshuffles node positions, and Obsidian
+  // does not persist those, so it can undo a layout the user arranged by hand.
+  const [graphPulseEnabled, setGraphPulseEnabled] = useState<boolean>(() => saved.graphPulseEnabled ?? false);
   const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
   
   // Topic ID for grouping messages - generated on init and on topic_switch
@@ -405,7 +407,7 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setHudEnabled(settings.hudEnabled ?? true);
       setHudTheme(settings.hudTheme || 'jarvis');
       setHudMode(settings.hudMode || 'strip');
-      setGraphPulseEnabled(settings.graphPulseEnabled ?? true);
+      setGraphPulseEnabled(settings.graphPulseEnabled ?? false);
 
       // Check if API key was added
       const activeKey = (settings.manualApiKey || '').trim();

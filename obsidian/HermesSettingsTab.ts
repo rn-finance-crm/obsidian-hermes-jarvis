@@ -31,7 +31,9 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   hudEnabled: true,
   hudTheme: 'jarvis',
   hudMode: 'strip',
-  graphPulseEnabled: true,
+  // Off by default: see the note in App.tsx — this moves graph nodes, and
+  // Obsidian does not save their positions.
+  graphPulseEnabled: false,
 };
 
 const HUD_THEME_LABELS: Record<HudTheme, string> = {
@@ -201,7 +203,7 @@ export class HermesSettingsTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Stir the graph while thinking')
-      .setDesc("While the assistant runs a search or reads a file, re-heat Obsidian's graph view so the vault map drifts and settles. Uses the graph's own physics; it cools back down on its own")
+      .setDesc("While the assistant runs a search or reads a file, re-heat Obsidian's graph view so the vault map drifts and settles. Note that this moves the nodes, and Obsidian does not save their positions — pin the ones you want to stay put")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings?.graphPulseEnabled ?? DEFAULT_HERMES_SETTINGS.graphPulseEnabled)
