@@ -27,8 +27,8 @@ interface SettingsProps {
   setHudTheme: (theme: HudTheme) => void;
   hudMode: HudMode;
   setHudMode: (mode: HudMode) => void;
-  reactiveGraphEnabled: boolean;
-  setReactiveGraphEnabled: (enabled: boolean) => void;
+  graphPulseEnabled: boolean;
+  setGraphPulseEnabled: (enabled: boolean) => void;
 }
 
 const HUD_THEMES: { value: HudTheme; label: string }[] = [
@@ -63,8 +63,8 @@ const Settings: React.FC<SettingsProps> = ({
   setHudTheme,
   hudMode,
   setHudMode,
-  reactiveGraphEnabled,
-  setReactiveGraphEnabled
+  graphPulseEnabled,
+  setGraphPulseEnabled
 }) => {
   if (!isOpen) return null;
 
@@ -183,21 +183,28 @@ const Settings: React.FC<SettingsProps> = ({
                   <p className="text-xs hermes-text-faint">Clicking the ring switches between these too.</p>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium hermes-text-muted">Reactive map</span>
-                    <p className="text-xs hermes-text-faint mt-1">Lights up files as they are read or searched</p>
-                  </div>
-                  <button
-                    onClick={() => setReactiveGraphEnabled(!reactiveGraphEnabled)}
-                    aria-pressed={reactiveGraphEnabled}
-                    className={`px-4 py-2 rounded-lg border text-sm transition-all ${reactiveGraphEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
-                  >
-                    {reactiveGraphEnabled ? 'Enabled' : 'Disabled'}
-                  </button>
-                </div>
               </div>
             )}
+          </div>
+
+          {/* Outside the HUD block: this drives Obsidian's graph view, so it
+              works whether or not the HUD itself is shown. */}
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium hermes-text-normal block">Stir the graph while thinking</label>
+                <p className="text-xs hermes-text-faint mt-1">
+                  Sets Obsidian&apos;s graph view in motion while a tool runs, using the graph&apos;s own physics
+                </p>
+              </div>
+              <button
+                onClick={() => setGraphPulseEnabled(!graphPulseEnabled)}
+                aria-pressed={graphPulseEnabled}
+                className={`px-4 py-2 rounded-lg border text-sm transition-all ${graphPulseEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+              >
+                {graphPulseEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4 pt-8 hermes-border-t">

@@ -17,7 +17,7 @@ export interface HermesSettings {
   hudEnabled: boolean;
   hudTheme: HudTheme;
   hudMode: HudMode;
-  reactiveGraphEnabled: boolean;
+  graphPulseEnabled: boolean;
 }
 
 export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
@@ -31,7 +31,7 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   hudEnabled: true,
   hudTheme: 'jarvis',
   hudMode: 'strip',
-  reactiveGraphEnabled: true,
+  graphPulseEnabled: true,
 };
 
 const HUD_THEME_LABELS: Record<HudTheme, string> = {
@@ -200,14 +200,14 @@ export class HermesSettingsTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName('Reactive map')
-      .setDesc('Show a live map of the files this conversation has touched, lighting each one up as it is read or searched. Only conversation files are shown, never the whole vault')
+      .setName('Stir the graph while thinking')
+      .setDesc("While the assistant runs a search or reads a file, re-heat Obsidian's graph view so the vault map drifts and settles. Uses the graph's own physics; it cools back down on its own")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settings?.reactiveGraphEnabled ?? DEFAULT_HERMES_SETTINGS.reactiveGraphEnabled)
+          .setValue(this.plugin.settings?.graphPulseEnabled ?? DEFAULT_HERMES_SETTINGS.graphPulseEnabled)
           .onChange(async (value) => {
             if (this.plugin.settings) {
-              this.plugin.settings.reactiveGraphEnabled = value;
+              this.plugin.settings.graphPulseEnabled = value;
               await this.plugin.saveSettings();
             }
           });
