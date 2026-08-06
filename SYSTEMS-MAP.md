@@ -124,16 +124,11 @@ behalf.
 Turn the whole thing off under **Settings → Hermes → Safety → Confirm
 destructive actions**.
 
-### Vault snapshots
+### Vault snapshots — undo
 
-With snapshots on, the vault is a local git repository and a commit is taken
-immediately before an approved destructive action runs — never before ordinary
-reads or edits.
+The vault is a local git repository. A commit is taken immediately before an
+approved destructive action runs — never before ordinary reads or edits.
 
-- Created on first use: `git init`, a `.gitignore`, and an initial commit.
-- **`.obsidian/` is excluded in full.** The plugin's `data.json` inside it holds
-  the Gemini and Serper API keys, and a key committed once stays in history.
-  `.trash/` is excluded too. All vault content is kept.
 - A local git identity is set on the repository, because commits fail without
   one and this machine has no global identity configured.
 - Desktop only — it shells out to `git`. On mobile it does nothing and the
@@ -149,6 +144,67 @@ git -C "<vault>" restore --source=<sha> -- .                   # everything
 
 Snapshot messages read `Before <what was approved>`, so the right commit is easy
 to spot.
+
+### Replication — surviving the machine
+
+Git history lives on this machine only, so it does not help if the machine
+does. Syncthing mirrors the vault to a paired phone over a direct encrypted
+connection: no account, no server holding a copy, nothing uploaded to a
+company. That matters here because the vault holds real client material.
+
+**Syncthing is not a backup — it is a mirror.** A deletion propagates within
+seconds. Staggered file versioning (30 days) is enabled so a deletion arriving
+from another device is still recoverable, but the protection against a mistake
+made *here* is the git history, not the mirror.
+
+| | protects against | does not protect against |
+| --- | --- | --- |
+| git history | a destructive action on this machine | losing the machine |
+| Syncthing | losing the machine | a deletion — it copies it |
+
+- Desktop device ID: `NMCZNQ6-36R6HZ5-UPVMHBD-GGN43SE-LFGMMDF-HYCQGJH-RZR2DWK-ICSZ6Q7`
+- Folder id `jarvis-vault`, web UI at <http://127.0.0.1:8384>
+- Starts at logon via the scheduled task **Syncthing (Jarvis vault)**
+- Android: the official app was discontinued in 2024; the maintained
+  continuation is **Syncthing-Fork**, on F-Droid and Play Store. It has changed
+  maintainers twice, which is worth knowing before relying on it long term.
+
+### What is excluded, and why
+
+Two separate exclusion lists, because they answer different questions.
+`.gitignore` decides what enters the history; `.stignore` decides what leaves
+the machine.
+
+| Excluded | From | Why |
+| --- | --- | --- |
+| `.obsidian/` | git | contains plugin `data.json` files holding live API keys |
+| `.obsidian/plugins/*/data.json` | sync | same keys; they should exist in one place only |
+| `.env*` (any depth, any tail) | both | the vault held `.env_v1.md` — an env file with a markdown tail, which `.env` and `*.env` both miss |
+| `.obsidian/workspace*.json` | sync | per-device UI state; syncing it produces constant conflicts |
+| `.git` | sync | thousands of small objects, slow on Android, and a copy taken mid-commit is inconsistent |
+| `.trash/`, OS clutter | both | noise |
+
+Client material is **not** excluded from either. Nothing leaves the machine
+except to the paired phone, where the same documents already arrive by
+WhatsApp and email.
+
+### Checking that a new sensitive file has not slipped through
+
+An ignore list is a guess about the future. This checks the outcome instead —
+it reads what git is actually tracking and flags credential-shaped values and
+risky filenames:
+
+```bash
+node scripts/scan-vault-secrets.mjs "C:/Users/User/Desktop/Obsidian/jarvis"
+```
+
+Run it after installing a plugin, or whenever the vault starts holding a new
+kind of file. Two hits are expected and harmless: Google Maps API keys inside
+marketing emails Google itself sent, in `10-Mailbox/Gmail/Inbox/`. They are not
+this vault's credentials.
+
+If it ever flags a real key that is already committed, adding it to
+`.gitignore` is not enough — **rotate the key**, because it remains in history.
 
 ---
 
