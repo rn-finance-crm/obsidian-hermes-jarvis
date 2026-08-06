@@ -1,5 +1,7 @@
 
 import React from 'react';
+import { HudMode, HudTheme } from './HermesHUD';
+import { DEFAULT_ASSISTANT_NAME } from '../utils/assistantIdentity';
 
 const AVAILABLE_VOICES = ['Default', 'Professional', 'Friendly', 'Creative', 'Technical'];
 
@@ -17,7 +19,27 @@ interface SettingsProps {
   serperApiKey: string;
   setSerperApiKey: (key: string) => void;
   onUpdateApiKey: () => void;
+  assistantName: string;
+  setAssistantName: (name: string) => void;
+  hudEnabled: boolean;
+  setHudEnabled: (enabled: boolean) => void;
+  hudTheme: HudTheme;
+  setHudTheme: (theme: HudTheme) => void;
+  hudMode: HudMode;
+  setHudMode: (mode: HudMode) => void;
+  graphPulseEnabled: boolean;
+  setGraphPulseEnabled: (enabled: boolean) => void;
 }
+
+const HUD_THEMES: { value: HudTheme; label: string }[] = [
+  { value: 'jarvis', label: 'J.A.R.V.I.S Cyan' },
+  { value: 'gold', label: 'RN Finance Gold' }
+];
+
+const HUD_MODES: { value: HudMode; label: string }[] = [
+  { value: 'strip', label: 'Compact strip' },
+  { value: 'full', label: 'Full panel' }
+];
 
 const Settings: React.FC<SettingsProps> = ({
   isOpen,
@@ -32,7 +54,17 @@ const Settings: React.FC<SettingsProps> = ({
   setManualApiKey,
   serperApiKey,
   setSerperApiKey,
-  onUpdateApiKey
+  onUpdateApiKey,
+  assistantName,
+  setAssistantName,
+  hudEnabled,
+  setHudEnabled,
+  hudTheme,
+  setHudTheme,
+  hudMode,
+  setHudMode,
+  graphPulseEnabled,
+  setGraphPulseEnabled
 }) => {
   if (!isOpen) return null;
 
@@ -87,6 +119,93 @@ const Settings: React.FC<SettingsProps> = ({
               placeholder="Define specific behaviors or rules for Hermes..."
               className="w-full h-20 hermes-bg-tertiary hermes-border/10 rounded-lg p-4 text-sm hermes-text-normal outline-none hermes-focus:border/50 transition-all font-mono placeholder:hermes-text-faint"
             />
+          </div>
+
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <label className="text-sm font-medium hermes-text-normal block">Assistant Name</label>
+            <input
+              type="text"
+              value={assistantName}
+              onChange={(e) => setAssistantName(e.target.value)}
+              placeholder={DEFAULT_ASSISTANT_NAME}
+              className="w-full hermes-bg-tertiary hermes-border/10 rounded-lg px-4 py-3 text-sm hermes-text-normal outline-none hermes-focus:border/50 transition-all"
+            />
+            <p className="text-xs hermes-text-faint">
+              It answers to this name in any language and will not correct you about it. Takes effect on the next session.
+            </p>
+          </div>
+
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium hermes-text-normal block">HUD Display</label>
+                <p className="text-xs hermes-text-faint mt-1">Animated status ring above the conversation</p>
+              </div>
+              <button
+                onClick={() => setHudEnabled(!hudEnabled)}
+                aria-pressed={hudEnabled}
+                className={`px-4 py-2 rounded-lg border text-sm transition-all ${hudEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+              >
+                {hudEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            {hudEnabled && (
+              <div className="grid gap-4 pt-2">
+                <div className="space-y-2">
+                  <span className="text-sm font-medium hermes-text-muted">Colour scheme</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {HUD_THEMES.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setHudTheme(value)}
+                        className={`px-4 py-2 rounded-lg border text-sm transition-all ${hudTheme === value ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="text-sm font-medium hermes-text-muted">Layout</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {HUD_MODES.map(({ value, label }) => (
+                      <button
+                        key={value}
+                        onClick={() => setHudMode(value)}
+                        className={`px-4 py-2 rounded-lg border text-sm transition-all ${hudMode === value ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-xs hermes-text-faint">Clicking the ring switches between these too.</p>
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* Outside the HUD block: this drives Obsidian's graph view, so it
+              works whether or not the HUD itself is shown. */}
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-sm font-medium hermes-text-normal block">Stir the graph while thinking</label>
+                <p className="text-xs hermes-text-faint mt-1">
+                  Sets Obsidian&apos;s graph view in motion while a tool runs. This moves the nodes, and
+                  Obsidian does not save their positions &mdash; pin the ones you want to stay put.
+                </p>
+              </div>
+              <button
+                onClick={() => setGraphPulseEnabled(!graphPulseEnabled)}
+                aria-pressed={graphPulseEnabled}
+                className={`px-4 py-2 rounded-lg border text-sm transition-all ${graphPulseEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+              >
+                {graphPulseEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4 pt-8 hermes-border-t">

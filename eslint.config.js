@@ -60,6 +60,20 @@ export default [
     },
   },
   {
+    // Build scripts run in Node, not in the plugin sandbox, so they need the
+    // Node globals declared. Without this the whole lint task fails on them.
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      globals: {
+        URL: "readonly",
+        clearTimeout: "readonly",
+        console: "readonly",
+        process: "readonly",
+        setTimeout: "readonly",
+      },
+    },
+  },
+  {
     ignores: ["main.js", "styles.css", "*.d.ts", "node_modules/**", "dist/**", "tailwind.config.js", "postcss.config.js"],
   },
 ];

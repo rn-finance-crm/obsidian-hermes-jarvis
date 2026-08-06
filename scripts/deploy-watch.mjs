@@ -2,6 +2,9 @@
 
 import { spawn } from "node:child_process";
 import { watch } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const deployScript = fileURLToPath(new URL("deploy.mjs", import.meta.url));
 
 const mode = process.argv[2] ?? "dev";
 const watchFiles = new Set(["manifest.json", "main.js", "styles.css"]);
@@ -17,7 +20,8 @@ const runDeploy = () => {
   }
 
   running = true;
-  const child = spawn("./deploy.sh", [mode], { stdio: "inherit" });
+  // deploy.mjs instead of deploy.sh: Windows cannot exec a .sh directly.
+  const child = spawn(process.execPath, [deployScript, mode], { stdio: "inherit" });
 
   child.on("exit", () => {
     running = false;

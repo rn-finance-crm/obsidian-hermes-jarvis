@@ -227,3 +227,260 @@
   -ms-user-select: text !important;
   user-select: text !important;
 }
+
+/* ============================================
+   J.A.R.V.I.S HUD
+   ============================================
+   All colour comes from CSS variables so a new palette is one extra
+   [data-hud-theme] block and nothing else. Class names are static on
+   purpose: Tailwind purges anything it cannot see as a literal string,
+   so state is expressed through data attributes, never through
+   composed class names. */
+
+.hermes-root .hermes-hud {
+  /* J.A.R.V.I.S palette (default) */
+  --hud-idle: #22d3ee;
+  --hud-listen: #34d399;
+  --hud-think: #fbbf24;
+  --hud-speak: #60a5fa;
+  --hud-error: #f87171;
+  --hud-off: #64748b;
+
+  --hud-color: var(--hud-off);
+  --hud-volume: 0;
+
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--hermes-border);
+  background: var(--hermes-header-bg);
+  flex-shrink: 0;
+}
+
+.hermes-root .hermes-hud[data-hud-theme='gold'] {
+  --hud-idle: #d4af37;
+  --hud-listen: #e8c766;
+  --hud-think: #f0c75e;
+  --hud-speak: #f5deb3;
+  --hud-error: #c0562e;
+  --hud-off: #6b5c33;
+}
+
+/* State drives one variable; every visual below inherits from it. */
+.hermes-root .hermes-hud[data-hud-state='ONLINE'] { --hud-color: var(--hud-idle); }
+.hermes-root .hermes-hud[data-hud-state='CONNECTING'] { --hud-color: var(--hud-idle); }
+.hermes-root .hermes-hud[data-hud-state='LISTENING'] { --hud-color: var(--hud-listen); }
+.hermes-root .hermes-hud[data-hud-state='THINKING'] { --hud-color: var(--hud-think); }
+.hermes-root .hermes-hud[data-hud-state='SPEAKING'] { --hud-color: var(--hud-speak); }
+.hermes-root .hermes-hud[data-hud-state='ERROR'] { --hud-color: var(--hud-error); }
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] { --hud-color: var(--hud-off); }
+
+/* ---- Dial ---- */
+
+.hermes-root .hermes-hud-dial {
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.hermes-root .hermes-hud-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hermes-root .hermes-hud-svg circle {
+  fill: none;
+  stroke: var(--hud-color);
+  transform-origin: 50% 50%;
+  transition: stroke 400ms ease;
+}
+
+.hermes-root .hermes-hud-track {
+  stroke-width: 1;
+  opacity: 0.18;
+}
+
+/* Two arcs turning against each other read as "scanning" rather than "loading". */
+.hermes-root .hermes-hud-sweep {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 40 243;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 3px var(--hud-color));
+  animation: hermes-hud-spin 3.2s linear infinite;
+}
+
+.hermes-root .hermes-hud-sweep-alt {
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 18 220;
+  opacity: 0.55;
+  animation: hermes-hud-spin 5.4s linear infinite reverse;
+}
+
+.hermes-root .hermes-hud-ticks {
+  stroke-width: 3;
+  stroke-dasharray: 1 7;
+  opacity: 0.35;
+  animation: hermes-hud-spin 24s linear infinite;
+}
+
+/* Scales with the live mic level; --hud-volume is written from an rAF loop. */
+.hermes-root .hermes-hud-pulse {
+  stroke-width: 1.5;
+  opacity: calc(0.25 + (var(--hud-volume) * 0.6));
+  transform: scale(calc(1 + (var(--hud-volume) * 0.22)));
+}
+
+.hermes-root .hermes-hud-core {
+  fill: var(--hud-color);
+  stroke: none;
+  opacity: calc(0.12 + (var(--hud-volume) * 0.35));
+  animation: hermes-hud-breathe 4s ease-in-out infinite;
+}
+
+/* THINKING is the moment worth dramatising: everything speeds up and tightens. */
+.hermes-root .hermes-hud[data-hud-state='THINKING'] .hermes-hud-sweep {
+  animation-duration: 0.9s;
+}
+
+.hermes-root .hermes-hud[data-hud-state='THINKING'] .hermes-hud-sweep-alt {
+  animation-duration: 1.4s;
+}
+
+.hermes-root .hermes-hud[data-hud-state='THINKING'] .hermes-hud-core {
+  animation-duration: 1s;
+}
+
+.hermes-root .hermes-hud[data-hud-state='CONNECTING'] .hermes-hud-sweep {
+  animation-duration: 6s;
+  opacity: 0.5;
+}
+
+/* Offline should look asleep, not broken: motion stops, nothing glows. */
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] .hermes-hud-sweep,
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] .hermes-hud-sweep-alt,
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] .hermes-hud-ticks,
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] .hermes-hud-core {
+  animation-play-state: paused;
+}
+
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] .hermes-hud-sweep {
+  filter: none;
+  opacity: 0.4;
+}
+
+.hermes-root .hermes-hud[data-hud-state='ERROR'] .hermes-hud-core {
+  animation: hermes-hud-alarm 1.1s ease-in-out infinite;
+}
+
+/* ---- Readout ---- */
+
+.hermes-root .hermes-hud-readout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hermes-root .hermes-hud-title {
+  font-family: var(--font-monospace, ui-monospace, monospace);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.32em;
+  color: var(--hermes-text-normal);
+}
+
+.hermes-root .hermes-hud-state {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--font-monospace, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  color: var(--hud-color);
+  transition: color 400ms ease;
+}
+
+.hermes-root .hermes-hud-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hud-color);
+  box-shadow: 0 0 6px var(--hud-color);
+  animation: hermes-hud-breathe 2.4s ease-in-out infinite;
+}
+
+.hermes-root .hermes-hud[data-hud-state='OFFLINE'] .hermes-hud-dot {
+  box-shadow: none;
+  animation: none;
+}
+
+/* ---- Full mode ---- */
+
+.hermes-root .hermes-hud[data-hud-mode='full'] {
+  flex-direction: column;
+  justify-content: center;
+  gap: 26px;
+  flex: 1 1 auto;
+  border-bottom: none;
+  padding: 32px 18px;
+  overflow: hidden;
+}
+
+.hermes-root .hermes-hud[data-hud-mode='full'] .hermes-hud-dial {
+  width: min(58vh, 260px);
+  height: min(58vh, 260px);
+}
+
+.hermes-root .hermes-hud[data-hud-mode='full'] .hermes-hud-readout {
+  align-items: center;
+}
+
+.hermes-root .hermes-hud[data-hud-mode='full'] .hermes-hud-title {
+  font-size: 26px;
+}
+
+.hermes-root .hermes-hud[data-hud-mode='full'] .hermes-hud-state {
+  font-size: 13px;
+}
+
+/* ---- Motion ---- */
+
+@keyframes hermes-hud-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes hermes-hud-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.85; }
+}
+
+@keyframes hermes-hud-alarm {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hermes-root .hermes-hud-sweep,
+  .hermes-root .hermes-hud-sweep-alt,
+  .hermes-root .hermes-hud-ticks,
+  .hermes-root .hermes-hud-core,
+  .hermes-root .hermes-hud-dot {
+    animation: none;
+  }
+
+  .hermes-root .hermes-hud-pulse {
+    transform: none;
+  }
+}
+

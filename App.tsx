@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
+import type { Plugin } from 'obsidian';
 import { LogEntry, TranscriptionEntry, ConnectionStatus, ToolData, UsageMetadata, AppSettings, ImageSearchResult } from './types';
 import { Content } from '@google/genai';
 import { initFileSystem, listDirectory } from './services/vaultOperations';
-import { saveAppSettings, loadAppSettings, saveChatHistory, loadChatHistory, reloadAppSettings } from './persistence/persistence';
+import { saveAppSettings, loadAppSettings, saveChatHistory, loadChatHistory, reloadAppSettings, getObsidianPlugin } from './persistence/persistence';
 import { GeminiVoiceAssistant } from './services/voiceInterface';
 import { GeminiTextInterface } from './services/textInterface';
 import { DEFAULT_SYSTEM_INSTRUCTION } from './utils/defaultPrompt';
@@ -10,9 +11,13 @@ import { isObsidian } from './utils/environment';
 import { executeCommand } from './services/commands';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
+import { useHudState } from './utils/useHudState';
+import { DEFAULT_ASSISTANT_NAME, resolveAssistantName } from './utils/assistantIdentity';
+import { useObsidianGraphPulse } from './utils/useObsidianGraphPulse';
 
 // Components
 import Header from './components/Header';
+import HermesHUD, { HudMode, HudTheme } from './components/HermesHUD';
 import Settings from './components/Settings';
 import MainWindow from './components/MainWindow';
 import InputBar from './components/InputBar';
@@ -70,6 +75,13 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   const [totalTokens, setTotalTokens] = useState<number>(() => saved.totalTokens || 0);
   const [usage, setUsage] = useState<UsageMetadata>({ totalTokenCount: saved.totalTokens || 0 });
   const [fileCount, setFileCount] = useState<number>(0);
+  const [assistantName, setAssistantName] = useState<string>(() => saved.assistantName || DEFAULT_ASSISTANT_NAME);
+  const [hudEnabled, setHudEnabled] = useState<boolean>(() => saved.hudEnabled ?? true);
+  const [hudTheme, setHudTheme] = useState<HudTheme>(() => saved.hudTheme || 'jarvis');
+  const [hudMode, setHudMode] = useState<HudMode>(() => saved.hudMode || 'strip');
+  // Off by default: stirring the graph reshuffles node positions, and Obsidian
+  // does not persist those, so it can undo a layout the user arranged by hand.
+  const [graphPulseEnabled, setGraphPulseEnabled] = useState<boolean>(() => saved.graphPulseEnabled ?? false);
   const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
   
   // Topic ID for grouping messages - generated on init and on topic_switch
@@ -80,6 +92,24 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   useEffect(() => {
     currentTopicIdRef.current = currentTopicId;
   }, [currentTopicId]);
+
+  // HUD display state, derived from session state rather than tracked separately
+  const hudState = useHudState({ status, activeSpeaker, transcripts });
+
+  // Stirs Obsidian's own graph view while a tool is running, so the vault map
+  // visibly comes alive when the assistant is working through it.
+  useObsidianGraphPulse(hudState, graphPulseEnabled);
+
+  // Mirror of micVolume for the HUD. Passing the value as a prop would re-render
+  // the HUD at audio rate; the HUD reads this ref in an animation frame instead.
+  const micVolumeRef = useRef<number>(0);
+  useEffect(() => {
+    micVolumeRef.current = micVolume;
+  }, [micVolume]);
+
+  const toggleHudMode = useCallback(() => {
+    setHudMode(prev => (prev === 'strip' ? 'full' : 'strip'));
+  }, []);
 
   // Watermarks for context sync between voice and text interfaces
   const [lastVoiceSyncIndex, setLastVoiceSyncIndex] = useState<number>(0);
@@ -316,9 +346,26 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       serperApiKey,
       currentFolder,
       currentNote,
-      totalTokens
+      totalTokens,
+      assistantName,
+      hudEnabled,
+      hudTheme,
+      hudMode,
+      graphPulseEnabled
     });
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens]);
+
+    // The HUD can also be changed from Obsidian's own settings tab, which saves
+    // the plugin's in-memory settings object. Mirror our values into it so that
+    // a later save from that tab does not write back a stale HUD state.
+    const plugin = getObsidianPlugin() as (Plugin & { settings?: AppSettings }) | null;
+    if (plugin?.settings) {
+      plugin.settings.assistantName = assistantName;
+      plugin.settings.hudEnabled = hudEnabled;
+      plugin.settings.hudTheme = hudTheme;
+      plugin.settings.hudMode = hudMode;
+      plugin.settings.graphPulseEnabled = graphPulseEnabled;
+    }
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, assistantName, hudEnabled, hudTheme, hudMode, graphPulseEnabled]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -356,7 +403,12 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setSystemInstruction(settings.systemInstruction || DEFAULT_SYSTEM_INSTRUCTION);
       setManualApiKey(settings.manualApiKey || '');
       setSerperApiKey(settings.serperApiKey || '');
-      
+      setAssistantName(settings.assistantName || DEFAULT_ASSISTANT_NAME);
+      setHudEnabled(settings.hudEnabled ?? true);
+      setHudTheme(settings.hudTheme || 'jarvis');
+      setHudMode(settings.hudMode || 'strip');
+      setGraphPulseEnabled(settings.graphPulseEnabled ?? false);
+
       // Check if API key was added
       const activeKey = (settings.manualApiKey || '').trim();
       if (activeKey && showApiKeySetup) {
@@ -765,6 +817,16 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             serperApiKey={serperApiKey}
             setSerperApiKey={setSerperApiKey}
             onUpdateApiKey={() => (window as { aistudio?: { openSelectKey?: () => void } }).aistudio?.openSelectKey()}
+            assistantName={assistantName}
+            setAssistantName={setAssistantName}
+            hudEnabled={hudEnabled}
+            setHudEnabled={setHudEnabled}
+            hudTheme={hudTheme}
+            setHudTheme={setHudTheme}
+            hudMode={hudMode}
+            setHudMode={setHudMode}
+            graphPulseEnabled={graphPulseEnabled}
+            setGraphPulseEnabled={setGraphPulseEnabled}
           />
           
           <Header 
@@ -778,11 +840,22 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             onResetConversation={resetConversation}
             transcripts={transcripts}
           />
-          
+
+          {hudEnabled && (
+            <HermesHUD
+              state={hudState}
+              theme={hudTheme}
+              mode={hudMode}
+              name={resolveAssistantName(assistantName)}
+              volumeRef={micVolumeRef}
+              onToggleMode={toggleHudMode}
+            />
+          )}
+
           {historyOpen ? (
             <History isActive={true} onRestoreConversation={restoreConversation} />
-          ) : (
-            <MainWindow 
+          ) : hudEnabled && hudMode === 'full' ? null : (
+            <MainWindow
               showKernel={showKernel}
               transcripts={transcripts} 
               hasSavedConversation={hasSavedConversation}
