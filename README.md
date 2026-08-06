@@ -1,5 +1,21 @@
 # Hermes Voice Assistant for Obsidian
 
+> **This is a personal fork of [symunona/obsidian-hermes](https://github.com/symunona/obsidian-hermes).**
+> Everything below describes the upstream plugin and still applies. This fork adds:
+>
+> - **A J.A.R.V.I.S-style HUD** above the conversation — an animated ring showing whether the
+>   assistant is online, listening, thinking or speaking, derived from session state the plugin
+>   already tracks. Two palettes, a compact and a full layout, and it can be switched off.
+> - **A configurable assistant name.** The assistant answers to it in any language or
+>   transliteration and will not correct you about it. Defaults to *Jarvis*.
+> - **An opt-in stir of Obsidian's graph view** while a tool runs, re-heating the graph's own
+>   force simulation so the vault map drifts. Off by default: it moves nodes, and Obsidian does
+>   not save node positions — pin the ones you want to stay put.
+> - **A cross-platform deploy script**, since `deploy.sh` cannot run on Windows.
+>
+> Settings for all of it live in Obsidian's settings tab under *Hermes Voice Assistant*, and in
+> the in-panel settings dialog.
+
 Hermes is a Real-Time, interactive voice interface for your Obsidian vault. 
 
 Powered by Google's **Gemini X Native Audio** API, it allows you to talk directly to your notes, perform file operations, and search the web—all via a low-latency voice channel.
