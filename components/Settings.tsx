@@ -29,6 +29,10 @@ interface SettingsProps {
   setHudMode: (mode: HudMode) => void;
   graphPulseEnabled: boolean;
   setGraphPulseEnabled: (enabled: boolean) => void;
+  safetyGateEnabled: boolean;
+  setSafetyGateEnabled: (enabled: boolean) => void;
+  vaultGitBackupEnabled: boolean;
+  setVaultGitBackupEnabled: (enabled: boolean) => void;
 }
 
 const HUD_THEMES: { value: HudTheme; label: string }[] = [
@@ -64,7 +68,11 @@ const Settings: React.FC<SettingsProps> = ({
   hudMode,
   setHudMode,
   graphPulseEnabled,
-  setGraphPulseEnabled
+  setGraphPulseEnabled,
+  safetyGateEnabled,
+  setSafetyGateEnabled,
+  vaultGitBackupEnabled,
+  setVaultGitBackupEnabled
 }) => {
   if (!isOpen) return null;
 
@@ -204,6 +212,44 @@ const Settings: React.FC<SettingsProps> = ({
                 className={`px-4 py-2 rounded-lg border text-sm transition-all ${graphPulseEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
               >
                 {graphPulseEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-8 hermes-border-t">
+            <label className="text-sm font-medium hermes-text-normal block">Safety</label>
+
+            <div className="flex items-center justify-between">
+              <div className="pr-4">
+                <span className="text-sm font-medium hermes-text-muted">Confirm destructive actions</span>
+                <p className="text-xs hermes-text-faint mt-1">
+                  Pauses before a global replace, a regex rewrite, a drastic overwrite, or a delete-style
+                  Obsidian command. It says what it is about to do and waits for you to agree out loud.
+                </p>
+              </div>
+              <button
+                onClick={() => setSafetyGateEnabled(!safetyGateEnabled)}
+                aria-pressed={safetyGateEnabled}
+                className={`shrink-0 px-4 py-2 rounded-lg border text-sm transition-all ${safetyGateEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+              >
+                {safetyGateEnabled ? 'Enabled' : 'Disabled'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="pr-4">
+                <span className="text-sm font-medium hermes-text-muted">Snapshot the vault first</span>
+                <p className="text-xs hermes-text-faint mt-1">
+                  Commits a local git snapshot just before a confirmed destructive action. Your Obsidian
+                  config folder is excluded, so API keys never enter the history. Desktop only.
+                </p>
+              </div>
+              <button
+                onClick={() => setVaultGitBackupEnabled(!vaultGitBackupEnabled)}
+                aria-pressed={vaultGitBackupEnabled}
+                className={`shrink-0 px-4 py-2 rounded-lg border text-sm transition-all ${vaultGitBackupEnabled ? 'hermes-interactive-bg border-interactive hermes-text-normal' : 'hermes-bg-secondary/5 hermes-border/10 hermes-text-muted hermes-hover:border/20'}`}
+              >
+                {vaultGitBackupEnabled ? 'Enabled' : 'Disabled'}
               </button>
             </div>
           </div>

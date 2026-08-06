@@ -140,6 +140,8 @@ export interface AppSettings {
   hudTheme?: 'jarvis' | 'gold';
   hudMode?: 'strip' | 'full';
   graphPulseEnabled?: boolean;
+  safetyGateEnabled?: boolean;
+  vaultGitBackupEnabled?: boolean;
 }
 
 export interface VoiceAssistantCallbacks {

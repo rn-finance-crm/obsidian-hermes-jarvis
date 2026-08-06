@@ -7,6 +7,7 @@ import { COMMAND_DECLARATIONS, executeCommand } from './commands';
 import { withRetry, RetryCounter } from '../utils/retryUtils';
 import { getErrorMessage } from '../utils/getErrorMessage';
 import { buildIdentityInstruction } from '../utils/assistantIdentity';
+import { SAFETY_INSTRUCTION } from '../utils/safetyInstruction';
 
 type LiveSession = {
   sendRealtimeInput: (payload: { media: { data: string | Uint8Array; mimeType: string } }) => void;
@@ -134,7 +135,7 @@ Current Note Name: ${this.currentNote || 'No note currently selected'}
       // Include conversation history in system prompt if provided
       const historySection = conversationHistory ? `\n\nPREVIOUS_CONVERSATION:\n${conversationHistory}\n` : '';
       const identitySection = buildIdentityInstruction(settings.assistantName);
-      const systemInstruction = `${settings.systemInstruction}\n\n${identitySection}\n${contextString}${historySection}\n${settings.customContext}`.trim();
+      const systemInstruction = `${settings.systemInstruction}\n\n${identitySection}\n\n${SAFETY_INSTRUCTION}\n${contextString}${historySection}\n${settings.customContext}`.trim();
 
       // System instruction debug summary
       console.debug(`System instruction: ${systemInstruction.length} chars, folder: ${this.currentFolder}, note: ${this.currentNote}`);

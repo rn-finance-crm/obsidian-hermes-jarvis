@@ -18,6 +18,8 @@ export interface HermesSettings {
   hudTheme: HudTheme;
   hudMode: HudMode;
   graphPulseEnabled: boolean;
+  safetyGateEnabled: boolean;
+  vaultGitBackupEnabled: boolean;
 }
 
 export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
@@ -34,6 +36,8 @@ export const DEFAULT_HERMES_SETTINGS: HermesSettings = {
   // Off by default: see the note in App.tsx — this moves graph nodes, and
   // Obsidian does not save their positions.
   graphPulseEnabled: false,
+  safetyGateEnabled: true,
+  vaultGitBackupEnabled: true,
 };
 
 const HUD_THEME_LABELS: Record<HudTheme, string> = {
@@ -210,6 +214,39 @@ export class HermesSettingsTab extends PluginSettingTab {
           .onChange(async (value) => {
             if (this.plugin.settings) {
               this.plugin.settings.graphPulseEnabled = value;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    // Safety
+    new Setting(containerEl)
+      .setName('Safety')
+      .setHeading();
+
+    new Setting(containerEl)
+      .setName('Confirm destructive actions')
+      .setDesc('Pause before a global find and replace, a regex rewrite of a file, an overwrite that would shrink a file drastically, or a delete-style Obsidian command. The assistant reads out exactly what it is about to do and waits for you to say yes. Everything else runs freely')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings?.safetyGateEnabled ?? DEFAULT_HERMES_SETTINGS.safetyGateEnabled)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.safetyGateEnabled = value;
+              await this.plugin.saveSettings();
+            }
+          });
+      });
+
+    new Setting(containerEl)
+      .setName('Snapshot the vault before approved actions')
+      .setDesc('Keeps a local git history of the vault and commits it just before a confirmed destructive action, so it can be rolled back. Your Obsidian config folder is excluded, so API keys never enter the history. Desktop only')
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings?.vaultGitBackupEnabled ?? DEFAULT_HERMES_SETTINGS.vaultGitBackupEnabled)
+          .onChange(async (value) => {
+            if (this.plugin.settings) {
+              this.plugin.settings.vaultGitBackupEnabled = value;
               await this.plugin.saveSettings();
             }
           });

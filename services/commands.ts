@@ -1,4 +1,6 @@
 
+import { evaluate as evaluateSafety } from './safetyGate';
+import { snapshot as gitSnapshot } from './vaultGit';
 import * as list_directory from '../tools/list_directory';
 import * as list_vault_files from '../tools/list_vault_files';
 import * as get_folder_tree from '../tools/get_folder_tree';
@@ -132,6 +134,50 @@ export const executeCommand = async (
   try {
     // Add currentFolder to args for tools that need it
     const argsWithFolder = currentFolder ? { ...args, currentFolder } : args;
+
+    // Destructive calls stop here until the user has approved them out loud.
+    // Deliberately before execute(), so nothing has happened yet when we ask.
+    const decision = await evaluateSafety(name, argsWithFolder);
+
+    if (decision.status === 'hold') {
+      callbacks.onLog(`Awaiting confirmation for ${name}`, 'info');
+      wrappedCallbacks.onSystem('Waiting for your confirmation', {
+        name,
+        filename: getStringArg(args, 'filename') || 'Registry',
+        status: 'pending'
+      });
+
+      return {
+        status: 'confirmation_required',
+        say_to_user: decision.hold.spokenPrompt,
+        instruction:
+          'Do NOT run this tool again yet. Read say_to_user to the user word for word, then wait for their answer. ' +
+          'Only call this tool again, with identical arguments, after they have clearly agreed. ' +
+          'Silence, an unclear reply or a change of subject is not agreement.'
+      };
+    }
+
+    if (decision.status === 'cancelled') {
+      callbacks.onLog(`Cancelled ${name}: ${decision.reason}`, 'info');
+      wrappedCallbacks.onSystem('Cancelled', {
+        name,
+        filename: getStringArg(args, 'filename') || 'Registry',
+        status: 'error'
+      });
+
+      return {
+        status: 'cancelled',
+        reason: decision.reason,
+        instruction: 'Tell the user the action was cancelled and nothing was changed. Do not retry unless they ask again.'
+      };
+    }
+
+    // Snapshot only what the user just approved — never before ordinary reads.
+    if (decision.status === 'allow' && decision.approvedSummary) {
+      const snap = await gitSnapshot(decision.approvedSummary);
+      callbacks.onLog(snap.message, snap.ok ? 'info' : 'error');
+    }
+
     const result = await tool.execute(argsWithFolder, wrappedCallbacks);
     
     // Check if result exceeds threshold and needs truncation

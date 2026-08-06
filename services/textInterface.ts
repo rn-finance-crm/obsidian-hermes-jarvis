@@ -3,6 +3,7 @@ import { AppSettings, UsageMetadata, ToolData, LogEntry } from '../types';
 import { COMMAND_DECLARATIONS, executeCommand } from './commands';
 import { withRetry, RetryCounter } from '../utils/retryUtils';
 import { buildIdentityInstruction } from '../utils/assistantIdentity';
+import { SAFETY_INSTRUCTION } from '../utils/safetyInstruction';
 
 export interface TextInterfaceCallbacks {
   onLog: (message: string, type: LogEntry['type'], duration?: number, errorDetails?: LogEntry['errorDetails']) => void;
@@ -44,7 +45,7 @@ Current Folder Path: ${this.currentFolder}
 Current Note Name: ${this.currentNote || 'No note currently selected'}
 `;
     const identitySection = buildIdentityInstruction(settings.assistantName);
-    this.systemInstruction = `${settings.systemInstruction}\n\n${identitySection}\n${contextString}\n\n${settings.customContext}`.trim();
+    this.systemInstruction = `${settings.systemInstruction}\n\n${identitySection}\n\n${SAFETY_INSTRUCTION}\n${contextString}\n\n${settings.customContext}`.trim();
 
     this.callbacks.onLog('Text interface ready.', 'info');
   }

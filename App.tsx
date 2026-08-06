@@ -9,6 +9,8 @@ import { GeminiTextInterface } from './services/textInterface';
 import { DEFAULT_SYSTEM_INSTRUCTION } from './utils/defaultPrompt';
 import { isObsidian } from './utils/environment';
 import { executeCommand } from './services/commands';
+import { setGateEnabled, setTranscriptReader } from './services/safetyGate';
+import { setSnapshotsEnabled } from './services/vaultGit';
 import { persistConversationHistory, PersistenceOptions } from './utils/historyPersistence';
 import { getErrorMessage } from './utils/getErrorMessage';
 import { useHudState } from './utils/useHudState';
@@ -82,6 +84,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   // Off by default: stirring the graph reshuffles node positions, and Obsidian
   // does not persist those, so it can undo a layout the user arranged by hand.
   const [graphPulseEnabled, setGraphPulseEnabled] = useState<boolean>(() => saved.graphPulseEnabled ?? false);
+  const [safetyGateEnabled, setSafetyGateEnabled] = useState<boolean>(() => saved.safetyGateEnabled ?? true);
+  const [vaultGitBackupEnabled, setVaultGitBackupEnabled] = useState<boolean>(() => saved.vaultGitBackupEnabled ?? true);
   const [showApiKeySetup, setShowApiKeySetup] = useState<boolean>(false);
   
   // Topic ID for grouping messages - generated on init and on topic_switch
@@ -99,6 +103,19 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
   // Stirs Obsidian's own graph view while a tool is running, so the vault map
   // visibly comes alive when the assistant is working through it.
   useObsidianGraphPulse(hudState, graphPulseEnabled);
+
+  // The safety gate checks what the user actually said before letting a
+  // destructive tool run, so it needs to read the live transcript. Registered
+  // as a reader over the ref rather than the state, so the gate always sees the
+  // latest entries instead of a stale closure.
+  useEffect(() => {
+    setTranscriptReader(() => transcriptsRef.current);
+  }, []);
+
+  useEffect(() => {
+    setGateEnabled(safetyGateEnabled);
+    setSnapshotsEnabled(vaultGitBackupEnabled);
+  }, [safetyGateEnabled, vaultGitBackupEnabled]);
 
   // Mirror of micVolume for the HUD. Passing the value as a prop would re-render
   // the HUD at audio rate; the HUD reads this ref in an animation frame instead.
@@ -351,7 +368,9 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       hudEnabled,
       hudTheme,
       hudMode,
-      graphPulseEnabled
+      graphPulseEnabled,
+      safetyGateEnabled,
+      vaultGitBackupEnabled
     });
 
     // The HUD can also be changed from Obsidian's own settings tab, which saves
@@ -364,8 +383,10 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       plugin.settings.hudTheme = hudTheme;
       plugin.settings.hudMode = hudMode;
       plugin.settings.graphPulseEnabled = graphPulseEnabled;
+      plugin.settings.safetyGateEnabled = safetyGateEnabled;
+      plugin.settings.vaultGitBackupEnabled = vaultGitBackupEnabled;
     }
-  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, assistantName, hudEnabled, hudTheme, hudMode, graphPulseEnabled]);
+  }, [voiceName, customContext, systemInstruction, manualApiKey, serperApiKey, currentFolder, currentNote, totalTokens, assistantName, hudEnabled, hudTheme, hudMode, graphPulseEnabled, safetyGateEnabled, vaultGitBackupEnabled]);
 
   // Check API key and show setup screen if needed
   useEffect(() => {
@@ -408,6 +429,8 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
       setHudTheme(settings.hudTheme || 'jarvis');
       setHudMode(settings.hudMode || 'strip');
       setGraphPulseEnabled(settings.graphPulseEnabled ?? false);
+      setSafetyGateEnabled(settings.safetyGateEnabled ?? true);
+      setVaultGitBackupEnabled(settings.vaultGitBackupEnabled ?? true);
 
       // Check if API key was added
       const activeKey = (settings.manualApiKey || '').trim();
@@ -827,6 +850,10 @@ const App = forwardRef<AppHandle, Record<string, never>>((_, ref) => {
             setHudMode={setHudMode}
             graphPulseEnabled={graphPulseEnabled}
             setGraphPulseEnabled={setGraphPulseEnabled}
+            safetyGateEnabled={safetyGateEnabled}
+            setSafetyGateEnabled={setSafetyGateEnabled}
+            vaultGitBackupEnabled={vaultGitBackupEnabled}
+            setVaultGitBackupEnabled={setVaultGitBackupEnabled}
           />
           
           <Header 
