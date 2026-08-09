@@ -188,6 +188,54 @@ Client material is **not** excluded from either. Nothing leaves the machine
 except to the paired phone, where the same documents already arrive by
 WhatsApp and email.
 
+### Getting a file out of the vault
+
+Reading a file only shows its contents. Two tools make one usable:
+
+| Tool | What it does |
+| --- | --- |
+| `export_file` | Copies it to the Desktop or Downloads so it can be attached, printed or sent |
+| `open_file` | Opens it in whatever application the system uses for that type |
+
+Both work for any file type — PDF, Word, Excel, images.
+
+`export_file` is the only place the assistant writes outside the vault, and the
+git history does not reach out there, so it is fenced in code:
+
+- **destination is a closed list** — Desktop or Downloads, nothing else
+- **overwriting is impossible** — an existing file gets a numbered sibling
+- **one direction only** — it reads from the vault; there is no path back in
+- **desktop only** — it reports plainly rather than failing on mobile
+
+It is deliberately not behind the confirmation gate: it only ever creates a new
+file and cannot destroy anything, so stopping to ask on every export would
+annoy without protecting.
+
+### Attachment names
+
+The mail importer damaged the names of the files it saved, in three ways, and
+`utils/attachmentNames.ts` repairs all three from the data itself:
+
+- **Hebrew stored as raw bytes** — decoded back, but only when the result is
+  valid UTF-8 containing Hebrew. Anything else is left alone rather than
+  guessed at.
+- **Names with a byte destroyed** — the importer replaced the second byte of a
+  letter with a space, which cannot be undone. These fall back to the folder
+  name, which the importer writes from the email subject and leaves intact.
+- **No extension at all** — identified from the file's leading bytes. Legacy
+  and zip-based Office share a signature across several formats, so those stay
+  as they are: a wrong extension is worse than none.
+
+The same code runs inside `export_file`, so a file exported today lands with a
+readable name even if the copy in the vault was never repaired.
+
+To repair the vault copies after a future import:
+
+```bash
+node scripts/repair-attachment-names.mjs            # report only
+node scripts/repair-attachment-names.mjs --apply    # act
+```
+
 ### Checking that a new sensitive file has not slipped through
 
 An ignore list is a guess about the future. This checks the outcome instead —

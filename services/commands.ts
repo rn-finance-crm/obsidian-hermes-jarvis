@@ -6,6 +6,8 @@ import * as list_vault_files from '../tools/list_vault_files';
 import * as get_folder_tree from '../tools/get_folder_tree';
 import * as dirlist from '../tools/dirlist';
 import * as read_file from '../tools/read_file';
+import * as export_file from '../tools/export_file';
+import * as open_file from '../tools/open_file';
 import * as create_file from '../tools/create_file';
 import * as update_file from '../tools/update_file';
 import * as edit_file from '../tools/edit_file';
@@ -61,6 +63,8 @@ const TOOLS: Record<string, ToolModule> = {
   get_folder_tree,
   dirlist,
   read_file,
+  export_file,
+  open_file,
   create_file,
   create_directory,
   delete_file,
