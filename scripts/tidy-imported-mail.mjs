@@ -19,8 +19,8 @@
  *   node scripts/tidy-imported-mail.mjs [--apply] [--vault <path>]
  */
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync } from 'node:fs';
+import { join } from 'node:path';
 
 const args = process.argv.slice(2);
 const apply = args.includes('--apply');

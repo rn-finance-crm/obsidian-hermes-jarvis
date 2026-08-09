@@ -65,6 +65,7 @@ export default [
     files: ["scripts/**/*.mjs"],
     languageOptions: {
       globals: {
+        Buffer: "readonly",
         URL: "readonly",
         clearTimeout: "readonly",
         console: "readonly",
